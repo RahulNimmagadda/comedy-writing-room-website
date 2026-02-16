@@ -103,6 +103,21 @@ export default async function HomePage() {
         </p>
       </div>
 
+      {/* Beta banner */}
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+        <div className="flex items-start gap-2">
+          <span aria-hidden className="mt-0.5">
+            ⚠️
+          </span>
+          <p className="text-sm leading-relaxed">
+            <span className="font-semibold">Beta Mode - Friends of Rah:</span>{" "}
+            Please don&apos;t share this publicly yet. I&apos;m very excited, but
+            still working out the kinks (ayo)! Lmk directly if you have feedback,
+            questions, etc.
+          </p>
+        </div>
+      </div>
+
       <div className="space-y-6">
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold">Upcoming Sessions</h2>

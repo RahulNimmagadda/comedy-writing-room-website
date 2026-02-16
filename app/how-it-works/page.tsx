@@ -6,7 +6,7 @@ export default function HowItWorksPage() {
       <section className="border rounded p-4 space-y-2">
         <h2 className="font-semibold text-lg">Session Format (60 mins)</h2>
         <ul className="list-disc ml-5 space-y-1">
-          <li>Max 5 comics per room</li>
+          <li>Max 5 comics per room (rooms will be split automatically if more than 5 comics sign up)</li>
           <li>Quick intros</li>
           <li>~10 minutes per comic (more if the room isn’t full)</li>
           <li>Run bits, premises, or rough ideas</li>
