@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "preinstall": "node -e \"console.log(\"npm_config_registry=\", process.env.npm_config_registry); console.log(\"npm_config_userconfig=\", process.env.npm_config_userconfig);\""
   },
   "dependencies": {
     "@clerk/nextjs": "^5.7.5",
