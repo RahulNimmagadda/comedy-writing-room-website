@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 
 export default function PayButton({
   sessionId,
@@ -10,8 +11,16 @@ export default function PayButton({
   disabled?: boolean;
 }) {
   const [loading, setLoading] = useState(false);
+  const { isSignedIn } = useAuth();
 
   const onClick = async () => {
+    // Gate paid signup behind auth
+    if (!isSignedIn) {
+      const redirectUrl = encodeURIComponent(`/?signup=${sessionId}`);
+      window.location.assign(`/sign-in?redirect_url=${redirectUrl}`);
+      return;
+    }
+
     try {
       setLoading(true);
 

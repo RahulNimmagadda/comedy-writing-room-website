@@ -1,17 +1,29 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isPublicRoute = createRouteMatcher([
-  "/",
-  "/how-it-works",
-  "/sign-in(.*)",
-  "/sign-up(.*)",
+/**
+ * Routes that REQUIRE authentication
+ * Everything else is public by default
+ */
+const isProtectedRoute = createRouteMatcher([
+  // User account pages
+  "/account(.*)",
+  "/my-sessions(.*)",
 
-  // ✅ Stripe must be able to hit this without auth
-  "/api/stripe/webhook(.*)",
+  // Admin area
+  "/admin(.*)",
+
+  // Session join actions (page-based joins if any)
+  "/join(.*)",
+
+  // Protected API routes
+  "/api/sessions/(.*)/join",
+  "/api/admin/(.*)",
 ]);
 
 export default clerkMiddleware((auth, req) => {
-  if (!isPublicRoute(req)) auth().protect();
+  if (isProtectedRoute(req)) {
+    auth().protect();
+  }
 });
 
 export const config = {

@@ -1,9 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { joinSession } from "./sessions/actions";
 import PayButton from "@/components/PayButton";
 import LocalTime from "@/components/LocalTime";
+import Link from "next/link";
 
 type SessionRow = {
   id: string;
@@ -15,7 +15,6 @@ type SessionRow = {
 };
 
 function isJoinWindowOpen(startsAtIso: string, durationMinutes: number) {
-  // This logic is timezone-agnostic since startsAtIso is an absolute moment (UTC ISO).
   const start = new Date(startsAtIso).getTime();
   const end = start + durationMinutes * 60_000;
   const now = Date.now();
@@ -28,12 +27,13 @@ function isJoinWindowOpen(startsAtIso: string, durationMinutes: number) {
 
 export default async function HomePage() {
   const { userId } = auth();
-  if (!userId) redirect("/sign-in");
 
   const isAdmin =
-    process.env.ADMIN_USER_IDS?.split(",")
+    !!userId &&
+    (process.env.ADMIN_USER_IDS?.split(",")
       .map((s) => s.trim())
-      .includes(userId) ?? false;
+      .includes(userId) ??
+      false);
 
   const { data: sessions, error: sessionsError } = await supabaseAdmin
     .from("sessions")
@@ -54,31 +54,34 @@ export default async function HomePage() {
   const typedSessions = (sessions ?? []) as SessionRow[];
   const sessionIds = typedSessions.map((s) => s.id);
 
-  const { data: bookings, error: bookingsError } = await supabaseAdmin
-    .from("bookings")
-    .select("session_id,user_id")
-    .in("session_id", sessionIds);
-
-  if (bookingsError) {
-    return (
-      <main className="min-h-screen max-w-2xl mx-auto space-y-6">
-        <h1 className="text-2xl font-bold">Upcoming Sessions</h1>
-        <pre className="p-4 border rounded overflow-auto bg-white">
-          {JSON.stringify(bookingsError, null, 2)}
-        </pre>
-      </main>
-    );
-  }
-
+  // Only fetch bookings if user is logged in (otherwise it's not needed)
   const seatsBySession = new Map<string, number>();
   const joinedSet = new Set<string>();
 
-  for (const b of bookings ?? []) {
-    seatsBySession.set(
-      b.session_id,
-      (seatsBySession.get(b.session_id) ?? 0) + 1
-    );
-    if (b.user_id === userId) joinedSet.add(b.session_id);
+  if (sessionIds.length > 0) {
+    const { data: bookings, error: bookingsError } = await supabaseAdmin
+      .from("bookings")
+      .select("session_id,user_id")
+      .in("session_id", sessionIds);
+
+    if (bookingsError) {
+      return (
+        <main className="min-h-screen max-w-2xl mx-auto space-y-6">
+          <h1 className="text-2xl font-bold">Upcoming Sessions</h1>
+          <pre className="p-4 border rounded overflow-auto bg-white">
+            {JSON.stringify(bookingsError, null, 2)}
+          </pre>
+        </main>
+      );
+    }
+
+    for (const b of bookings ?? []) {
+      seatsBySession.set(
+        b.session_id,
+        (seatsBySession.get(b.session_id) ?? 0) + 1
+      );
+      if (userId && b.user_id === userId) joinedSet.add(b.session_id);
+    }
   }
 
   return (
@@ -101,6 +104,17 @@ export default async function HomePage() {
           give and get feedback, and sharpen your jokes while meeting other
           comics.
         </p>
+
+        {!userId && (
+          <div className="pt-2">
+            <Link
+              href="/sign-in"
+              className="inline-block text-sm underline opacity-80 hover:opacity-100"
+            >
+              Sign in to sign up for sessions →
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Beta banner */}
@@ -121,7 +135,9 @@ export default async function HomePage() {
       <div className="space-y-6">
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold">Upcoming Sessions</h2>
-          <p className="opacity-70 text-sm">Sign-ups are live.</p>
+          <p className="opacity-70 text-sm">
+            {userId ? "Sign-ups are live." : "Browse sessions below. Sign in to sign up."}
+          </p>
           <p className="text-xs opacity-60">
             “Join Room” becomes available 5 minutes before start time (after you
             sign up).
@@ -134,10 +150,7 @@ export default async function HomePage() {
             const totalCap = s.seat_cap * 5;
             const isFull = seats >= totalCap;
 
-            const alreadyJoined = joinedSet.has(s.id);
-
-            // NOTE: This still runs on the server at render time.
-            // It will be correct, but may be stale if you keep the page open.
+            const alreadyJoined = userId ? joinedSet.has(s.id) : false;
             const canJoinNow = isJoinWindowOpen(s.starts_at, s.duration_minutes);
 
             return (
@@ -190,6 +203,15 @@ export default async function HomePage() {
                           : "Room opens 5 minutes before start"}
                       </div>
                     </div>
+                  ) : !userId ? (
+                    <Link
+                      href={`/sign-in?redirect_url=${encodeURIComponent("/")}`}
+                      className={`px-3 py-2 rounded text-white ${
+                        isFull ? "bg-black opacity-40 pointer-events-none" : "bg-black"
+                      }`}
+                    >
+                      {isFull ? "Full" : "Sign in to sign up"}
+                    </Link>
                   ) : isAdmin ? (
                     <form action={joinSession}>
                       <input type="hidden" name="sessionId" value={s.id} />
