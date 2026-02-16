@@ -4,14 +4,15 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  {   const { id } = await params;
+params }: { params: { id: string } }
 ) {
   const { userId } = auth();
   if (!userId) {
     return new NextResponse("Unauthorized (not signed in)", { status: 401 });
   }
 
-  const sessionId = params.id;
+  const sessionId = id;
 
   // 1) Compute room (balanced pre-start; locked at start; late join within 5 min only if fits)
   const { data: roomNumber, error: roomErr } = await supabaseAdmin.rpc(

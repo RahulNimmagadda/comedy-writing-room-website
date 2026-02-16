@@ -92,7 +92,6 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen max-w-2xl mx-auto space-y-10">
-      {/* Header */}
       <div className="text-center space-y-4 relative">
         {isAdmin && (
           <div className="absolute top-0 right-0">
@@ -113,7 +112,6 @@ export default async function HomePage() {
         </p>
       </div>
 
-      {/* Sessions */}
       <div className="space-y-6">
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold">Upcoming Sessions</h2>
@@ -208,7 +206,6 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* Suggest Time Section */}
       <div className="mt-12 p-6 border rounded-lg text-center bg-gray-50">
         <p className="text-sm text-gray-700">
           No times work for you? Want to host or add a weekly session?
