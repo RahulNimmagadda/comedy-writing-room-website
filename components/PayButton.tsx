@@ -56,7 +56,7 @@ export default function PayButton({
       disabled={disabled || loading}
       className="px-3 py-2 rounded bg-black text-white disabled:opacity-40"
     >
-      {disabled ? "Full" : loading ? "Redirecting…" : "Pay $1 to sign up"}
+      {disabled ? "Full" : loading ? "Redirecting…" : "Pay $1 to reserve spot"}
     </button>
   );
 }

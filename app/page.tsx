@@ -54,7 +54,6 @@ export default async function HomePage() {
   const typedSessions = (sessions ?? []) as SessionRow[];
   const sessionIds = typedSessions.map((s) => s.id);
 
-  // Only fetch bookings if user is logged in (otherwise it's not needed)
   const seatsBySession = new Map<string, number>();
   const joinedSet = new Set<string>();
 
@@ -89,12 +88,12 @@ export default async function HomePage() {
       <div className="text-center space-y-4 relative">
         {isAdmin && (
           <div className="absolute top-0 right-0">
-            <a
+            <Link
               href="/admin/sessions"
               className="text-sm underline opacity-70 hover:opacity-100"
             >
               Admin
-            </a>
+            </Link>
           </div>
         )}
 
@@ -111,7 +110,7 @@ export default async function HomePage() {
               href="/sign-in"
               className="inline-block text-sm underline opacity-80 hover:opacity-100"
             >
-              Sign in to sign up for sessions →
+              Sign in to reserve spot ($1) →
             </Link>
           </div>
         )}
@@ -136,11 +135,13 @@ export default async function HomePage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold">Upcoming Sessions</h2>
           <p className="opacity-70 text-sm">
-            {userId ? "Sign-ups are live." : "Browse sessions below. Sign in to sign up."}
+            {userId
+              ? "Spots are live."
+              : "Browse sessions below. Sign in to reserve a spot ($1)."}
           </p>
           <p className="text-xs opacity-60">
             “Join Room” becomes available 5 minutes before start time (after you
-            sign up).
+            reserve your spot).
           </p>
         </div>
 
@@ -182,10 +183,10 @@ export default async function HomePage() {
                     <div className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <div className="text-sm px-3 py-2 rounded border bg-gray-50 inline-block">
-                          Signed Up ✅
+                          Reserved ✅
                         </div>
 
-                        <a
+                        <Link
                           href={`/sessions/${s.id}/join`}
                           className={`px-3 py-2 rounded text-white ${
                             canJoinNow
@@ -194,7 +195,7 @@ export default async function HomePage() {
                           }`}
                         >
                           Join Room
-                        </a>
+                        </Link>
                       </div>
 
                       <div className="text-xs opacity-60 mt-1">
@@ -210,7 +211,7 @@ export default async function HomePage() {
                         isFull ? "bg-black opacity-40 pointer-events-none" : "bg-black"
                       }`}
                     >
-                      {isFull ? "Full" : "Sign in to sign up"}
+                      {isFull ? "Full" : "Sign in to reserve spot ($1)"}
                     </Link>
                   ) : isAdmin ? (
                     <form action={joinSession}>
@@ -219,7 +220,7 @@ export default async function HomePage() {
                         className="px-3 py-2 rounded bg-black text-white disabled:opacity-40"
                         disabled={isFull}
                       >
-                        {isFull ? "Full" : "Admin: Sign Up Free"}
+                        {isFull ? "Full" : "Admin: Reserve Free"}
                       </button>
                     </form>
                   ) : (
