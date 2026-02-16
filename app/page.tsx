@@ -1,7 +1,8 @@
+cat > app/page.tsx <<'EOF'
 import { auth } from "@clerk/nextjs/server";
-import { redirectToSignIn } from "@clerk/nextjs";
+import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import PayButton from "@/components/PayButton";
+import { joinSession } from "./sessions/actions";
 
 type SessionRow = {
   id: string;
@@ -36,7 +37,7 @@ function isJoinWindowOpen(startsAtIso: string, durationMinutes: number) {
 
 export default async function HomePage() {
   const { userId } = auth();
-  if (!userId) return redirectToSignIn();
+  if (!userId) redirect("/sign-in");
 
   const isAdmin =
     process.env.ADMIN_USER_IDS?.split(",")
@@ -118,8 +119,7 @@ export default async function HomePage() {
           <h2 className="text-2xl font-semibold">Upcoming Sessions</h2>
           <p className="opacity-70 text-sm">Sign-ups are live.</p>
           <p className="text-xs opacity-60">
-            “Join Room” becomes available 5 minutes before start time (after you
-            sign up).
+            “Join Room” becomes available 5 minutes before start time (after you sign up).
           </p>
         </div>
 
@@ -130,7 +130,10 @@ export default async function HomePage() {
             const isFull = seats >= totalCap;
 
             const alreadyJoined = joinedSet.has(s.id);
-            const canJoinNow = isJoinWindowOpen(s.starts_at, s.duration_minutes);
+            const canJoinNow = isJoinWindowOpen(
+              s.starts_at,
+              s.duration_minutes
+            );
 
             return (
               <div
@@ -140,8 +143,7 @@ export default async function HomePage() {
                 <div>
                   <div className="font-semibold">{s.title}</div>
                   <div className="text-sm opacity-70">
-                    {formatWhen(s.starts_at)} • {s.duration_minutes} min •{" "}
-                    {s.status}
+                    {formatWhen(s.starts_at)} • {s.duration_minutes} min • {s.status}
                   </div>
 
                   <div className="text-sm opacity-70 mt-1">
@@ -183,7 +185,15 @@ export default async function HomePage() {
                       </div>
                     </div>
                   ) : (
-                    <PayButton sessionId={s.id} disabled={isFull} />
+                    <form action={joinSession}>
+                      <input type="hidden" name="sessionId" value={s.id} />
+                      <button
+                        className="px-3 py-2 rounded bg-black text-white disabled:opacity-40"
+                        disabled={isFull}
+                      >
+                        {isFull ? "Full" : "Sign Up for Session"}
+                      </button>
+                    </form>
                   )}
                 </div>
               </div>
@@ -215,3 +225,4 @@ export default async function HomePage() {
     </main>
   );
 }
+EOF

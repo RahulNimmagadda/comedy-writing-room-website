@@ -28,7 +28,7 @@ export default function PayButton({
       }
 
       window.location.assign(data.url);
-    } catch (e: any) {
+    } catch (e: unknown) {
       alert(e?.message || "Something went wrong");
     } finally {
       setLoading(false);

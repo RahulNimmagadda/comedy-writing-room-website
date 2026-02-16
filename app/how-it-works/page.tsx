@@ -17,7 +17,7 @@ export default function HowItWorksPage() {
       <section className="border rounded p-4 space-y-2">
         <h2 className="font-semibold text-lg">What To Bring</h2>
         <ul className="list-disc ml-5 space-y-1">
-          <li>1–3 ideas you're actively working on</li>
+          <li>1–3 ideas you&apos;re actively working on</li>
           <li>Openness to feedback</li>
           <li>Willingness to give thoughtful notes</li>
         </ul>
