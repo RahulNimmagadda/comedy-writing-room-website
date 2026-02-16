@@ -1,3 +1,4 @@
+cat > "app/sessions/[id]/join/route.ts" <<'EOF'
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -17,3 +18,4 @@ export async function GET(
   // Example: redirect to a room page:
   return NextResponse.redirect(new URL(`/sessions/${id}`, _req.url));
 }
+EOF
