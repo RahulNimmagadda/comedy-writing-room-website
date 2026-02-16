@@ -86,9 +86,9 @@ export default async function AdminSessionsPage() {
             Create, edit, and delete sessions without touching Supabase.
           </p>
         </div>
-        <a href="/" className="text-sm underline opacity-80 hover:opacity-100">
+        <Link href="/" className="text-sm underline opacity-80 hover:opacity-100">
           ← Back to site
-        </a>
+        </Link>
       </div>
 
       {/* Create */}
