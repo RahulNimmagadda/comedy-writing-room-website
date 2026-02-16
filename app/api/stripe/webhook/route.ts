@@ -3,10 +3,23 @@ import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+function getErrorMessage(err: unknown) {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+}
+
 export async function POST(req: Request) {
   const sig = req.headers.get("stripe-signature");
   if (!sig) {
-    return NextResponse.json({ error: "Missing stripe-signature" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing stripe-signature" },
+      { status: 400 }
+    );
   }
 
   // Stripe requires the *raw* request body for signature verification
@@ -20,10 +33,12 @@ export async function POST(req: Request) {
       process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (err: unknown) {
-    return NextResponse.json({ error: `Webhook signature verification failed: ${err.message}` }, { status: 400 });
+    return NextResponse.json(
+      { error: `Webhook signature verification failed: ${getErrorMessage(err)}` },
+      { status: 400 }
+    );
   }
 
-  // We care about successful checkout completion
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
@@ -31,15 +46,19 @@ export async function POST(req: Request) {
     const writingSessionId = session.metadata?.writing_session_id;
 
     if (!clerkUserId || !writingSessionId) {
-      return NextResponse.json({ error: "Missing metadata on checkout session" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing metadata on checkout session" },
+        { status: 400 }
+      );
     }
 
-    // Only book if Stripe says it is paid
     if (session.payment_status !== "paid") {
-      return NextResponse.json({ received: true, ignored: "payment_status_not_paid" });
+      return NextResponse.json({
+        received: true,
+        ignored: "payment_status_not_paid",
+      });
     }
 
-    // Insert booking (idempotent via unique index)
     const { error } = await supabaseAdmin.from("bookings").insert({
       session_id: writingSessionId,
       user_id: clerkUserId,
