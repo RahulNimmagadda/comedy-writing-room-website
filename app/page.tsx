@@ -1,4 +1,3 @@
-cat > app/page.tsx <<'EOF'
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -117,7 +116,8 @@ export default async function HomePage() {
           <h2 className="text-2xl font-semibold">Upcoming Sessions</h2>
           <p className="opacity-70 text-sm">Sign-ups are live.</p>
           <p className="text-xs opacity-60">
-            “Join Room” becomes available 5 minutes before start time (after you sign up).
+            “Join Room” becomes available 5 minutes before start time (after you
+            sign up).
           </p>
         </div>
 
@@ -141,7 +141,8 @@ export default async function HomePage() {
                 <div>
                   <div className="font-semibold">{s.title}</div>
                   <div className="text-sm opacity-70">
-                    {formatWhen(s.starts_at)} • {s.duration_minutes} min • {s.status}
+                    {formatWhen(s.starts_at)} • {s.duration_minutes} min •{" "}
+                    {s.status}
                   </div>
 
                   <div className="text-sm opacity-70 mt-1">
@@ -222,4 +223,3 @@ export default async function HomePage() {
     </main>
   );
 }
-EOF
