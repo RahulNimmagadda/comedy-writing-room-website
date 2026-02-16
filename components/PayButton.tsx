@@ -29,7 +29,13 @@ export default function PayButton({
 
       window.location.assign(data.url);
     } catch (e: unknown) {
-      alert(e?.message || "Something went wrong");
+      const message =
+        e instanceof Error
+          ? e.message
+          : typeof e === "string"
+          ? e
+          : "Something went wrong";
+      alert(message);
     } finally {
       setLoading(false);
     }
