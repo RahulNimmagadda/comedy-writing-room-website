@@ -3,28 +3,19 @@ import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { joinSession } from "./sessions/actions";
 import PayButton from "@/components/PayButton";
+import LocalTime from "@/components/LocalTime";
 
 type SessionRow = {
   id: string;
   title: string;
-  starts_at: string;
+  starts_at: string; // UTC ISO in DB
   duration_minutes: number;
   seat_cap: number;
   status: string;
 };
 
-function formatWhen(startsAtIso: string) {
-  const d = new Date(startsAtIso);
-  return d.toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 function isJoinWindowOpen(startsAtIso: string, durationMinutes: number) {
+  // This logic is timezone-agnostic since startsAtIso is an absolute moment (UTC ISO).
   const start = new Date(startsAtIso).getTime();
   const end = start + durationMinutes * 60_000;
   const now = Date.now();
@@ -107,7 +98,8 @@ export default async function HomePage() {
         <h1 className="text-4xl font-bold">Comedy Writing Room</h1>
         <p className="text-lg opacity-80 max-w-2xl mx-auto">
           Daily writing sessions with comics across the globe. Bring material,
-          give and get feedback, and sharpen your jokes while meeting other comics.
+          give and get feedback, and sharpen your jokes while meeting other
+          comics.
         </p>
       </div>
 
@@ -116,7 +108,8 @@ export default async function HomePage() {
           <h2 className="text-2xl font-semibold">Upcoming Sessions</h2>
           <p className="opacity-70 text-sm">Sign-ups are live.</p>
           <p className="text-xs opacity-60">
-            “Join Room” becomes available 5 minutes before start time (after you sign up).
+            “Join Room” becomes available 5 minutes before start time (after you
+            sign up).
           </p>
         </div>
 
@@ -127,10 +120,10 @@ export default async function HomePage() {
             const isFull = seats >= totalCap;
 
             const alreadyJoined = joinedSet.has(s.id);
-            const canJoinNow = isJoinWindowOpen(
-              s.starts_at,
-              s.duration_minutes
-            );
+
+            // NOTE: This still runs on the server at render time.
+            // It will be correct, but may be stale if you keep the page open.
+            const canJoinNow = isJoinWindowOpen(s.starts_at, s.duration_minutes);
 
             return (
               <div
@@ -140,7 +133,8 @@ export default async function HomePage() {
                 <div>
                   <div className="font-semibold">{s.title}</div>
                   <div className="text-sm opacity-70">
-                    {formatWhen(s.starts_at)} • {s.duration_minutes} min • {s.status}
+                    <LocalTime iso={s.starts_at} /> • {s.duration_minutes} min •{" "}
+                    {s.status}
                   </div>
 
                   <div className="text-sm opacity-70 mt-1">

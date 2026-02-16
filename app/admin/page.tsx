@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
@@ -15,14 +16,15 @@ type SessionRow = {
 
 function isAdmin(userId: string | null | undefined) {
   if (!userId) return false;
-  const raw = process.env.ADMIN_CLERK_USER_IDS || "";
+  const raw = process.env.ADMIN_USER_IDS || "";
   const allowed = raw.split(",").map((s) => s.trim()).filter(Boolean);
   return allowed.includes(userId);
 }
 
-function formatWhen(startsAtIso: string) {
+function formatWhenNYC(startsAtIso: string) {
   const d = new Date(startsAtIso);
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString("en-US", {
+    timeZone: "America/New_York",
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -47,12 +49,22 @@ export default async function AdminPage() {
     const seatCap = Number(formData.get("seat_cap") || 5);
     const zoomLinkRaw = String(formData.get("zoom_link") || "").trim();
 
-    const startsAt = new Date(startsAtLocal);
+    if (!startsAtLocal) throw new Error("Missing start time");
+
+    const dt = DateTime.fromFormat(startsAtLocal, "yyyy-MM-dd'T'HH:mm", {
+      zone: "America/New_York",
+    });
+
+    if (!dt.isValid) throw new Error(`Invalid start time: ${startsAtLocal}`);
+
+    const startsAtUtcIso = dt.toUTC().toISO();
+    if (!startsAtUtcIso) throw new Error("Failed to convert start time");
+
     const zoom_link = zoomLinkRaw.length ? zoomLinkRaw : null;
 
     const { error } = await supabaseAdmin.from("sessions").insert({
       title,
-      starts_at: startsAt.toISOString(),
+      starts_at: startsAtUtcIso,
       duration_minutes: duration,
       seat_cap: seatCap,
       status: "scheduled",
@@ -134,7 +146,6 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      {/* Create new session */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Create a session</h2>
 
@@ -149,7 +160,7 @@ export default async function AdminPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm opacity-70">Start time</label>
+            <label className="text-sm opacity-70">Start time (NYC)</label>
             <input
               name="starts_at"
               type="datetime-local"
@@ -197,7 +208,6 @@ export default async function AdminPage() {
         </form>
       </section>
 
-      {/* Edit existing sessions */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Edit Zoom links</h2>
         <p className="text-sm opacity-60">
@@ -211,7 +221,7 @@ export default async function AdminPage() {
                 <div>
                   <div className="font-semibold">{s.title}</div>
                   <div className="text-sm opacity-70">
-                    {formatWhen(s.starts_at)} • {s.duration_minutes} min • cap{" "}
+                    {formatWhenNYC(s.starts_at)} • {s.duration_minutes} min • cap{" "}
                     {s.seat_cap}
                   </div>
                 </div>
