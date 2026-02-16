@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 function isJoinWindowOpen(startsAtIso: string, durationMinutes: number) {
@@ -23,7 +24,6 @@ export default async function SessionJoinPage({
 
   const { id: sessionId } = await params;
 
-  // Load session timing info
   const { data: session, error: sessionError } = await supabaseAdmin
     .from("sessions")
     .select("id, title, starts_at, duration_minutes")
@@ -35,11 +35,13 @@ export default async function SessionJoinPage({
       <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
         <h1 className="text-2xl font-bold">Session not found</h1>
         <p className="opacity-70">That session may have been removed.</p>
+        <Link className="underline" href="/">
+          Back to sessions
+        </Link>
       </main>
     );
   }
 
-  // Check join window (server-side)
   const canJoinNow = isJoinWindowOpen(session.starts_at, session.duration_minutes);
   if (!canJoinNow) {
     return (
@@ -48,12 +50,13 @@ export default async function SessionJoinPage({
         <p className="opacity-70">
           Rooms open 5 minutes before start and close 10 minutes after the session ends.
         </p>
-        <a className="underline" href="/">Back to sessions</a>
+        <Link className="underline" href="/">
+          Back to sessions
+        </Link>
       </main>
     );
   }
 
-  // Must be booked (get_room_for_user will also enforce this)
   const { data: booking } = await supabaseAdmin
     .from("bookings")
     .select("id")
@@ -66,12 +69,13 @@ export default async function SessionJoinPage({
       <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
         <h1 className="text-2xl font-bold">You’re not signed up</h1>
         <p className="opacity-70">Please sign up for this session before joining the room.</p>
-        <a className="underline" href="/">Back to sessions</a>
+        <Link className="underline" href="/">
+          Back to sessions
+        </Link>
       </main>
     );
   }
 
-  // Compute (and possibly persist if session already started) room number
   const { data: roomNumber, error: roomErr } = await supabaseAdmin.rpc(
     "get_room_for_user",
     {
@@ -87,12 +91,13 @@ export default async function SessionJoinPage({
         <pre className="p-4 border rounded bg-white overflow-auto">
           {JSON.stringify(roomErr ?? { error: "No room number returned" }, null, 2)}
         </pre>
-        <a className="underline" href="/">Back to sessions</a>
+        <Link className="underline" href="/">
+          Back to sessions
+        </Link>
       </main>
     );
   }
 
-  // Map room number -> Zoom link
   const { data: zoom, error: zoomErr } = await supabaseAdmin
     .from("zoom_rooms")
     .select("zoom_link, room_label")
@@ -109,11 +114,12 @@ export default async function SessionJoinPage({
         <pre className="p-4 border rounded bg-white overflow-auto">
           {JSON.stringify(zoomErr ?? { error: "Missing zoom_link" }, null, 2)}
         </pre>
-        <a className="underline" href="/">Back to sessions</a>
+        <Link className="underline" href="/">
+          Back to sessions
+        </Link>
       </main>
     );
   }
 
-  // ✅ Send them to Zoom
   redirect(zoom.zoom_link);
 }

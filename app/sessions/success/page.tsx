@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { stripe } from "@/lib/stripe";
 
 export default async function SuccessPage({
@@ -17,11 +18,15 @@ export default async function SuccessPage({
       <main className="min-h-screen max-w-2xl mx-auto p-8">
         <h1 className="text-2xl font-bold">Missing payment info</h1>
         <p className="opacity-70 mt-2">Could not confirm your payment.</p>
+        <div className="mt-4">
+          <Link className="underline" href="/">
+            Back to sessions
+          </Link>
+        </div>
       </main>
     );
   }
 
-  // Optional: verify Stripe says it's paid (nice UX)
   const checkout = await stripe.checkout.sessions.retrieve(cs_id);
 
   if (checkout.payment_status !== "paid") {
@@ -31,12 +36,15 @@ export default async function SuccessPage({
         <p className="opacity-70 mt-2">
           If you were charged, your payment may still be processing. Check back in a moment.
         </p>
-        <a className="underline" href="/">Back to sessions</a>
+        <div className="mt-4">
+          <Link className="underline" href="/">
+            Back to sessions
+          </Link>
+        </div>
       </main>
     );
   }
 
-  // ✅ Do NOT insert booking here.
-  // Webhook is the source of truth and will book + auto-refund if needed.
+  // Webhook is the source of truth for bookings (and auto-refunds if full).
   redirect("/");
 }
