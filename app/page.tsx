@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { joinSession } from "./sessions/actions";
+import PayButton from "@/components/PayButton";
 
 type SessionRow = {
   id: string;
@@ -106,8 +107,7 @@ export default async function HomePage() {
         <h1 className="text-4xl font-bold">Comedy Writing Room</h1>
         <p className="text-lg opacity-80 max-w-2xl mx-auto">
           Daily writing sessions with comics across the globe. Bring material,
-          give and get feedback, and sharpen your jokes while meeting other
-          comics.
+          give and get feedback, and sharpen your jokes while meeting other comics.
         </p>
       </div>
 
@@ -116,8 +116,7 @@ export default async function HomePage() {
           <h2 className="text-2xl font-semibold">Upcoming Sessions</h2>
           <p className="opacity-70 text-sm">Sign-ups are live.</p>
           <p className="text-xs opacity-60">
-            “Join Room” becomes available 5 minutes before start time (after you
-            sign up).
+            “Join Room” becomes available 5 minutes before start time (after you sign up).
           </p>
         </div>
 
@@ -141,8 +140,7 @@ export default async function HomePage() {
                 <div>
                   <div className="font-semibold">{s.title}</div>
                   <div className="text-sm opacity-70">
-                    {formatWhen(s.starts_at)} • {s.duration_minutes} min •{" "}
-                    {s.status}
+                    {formatWhen(s.starts_at)} • {s.duration_minutes} min • {s.status}
                   </div>
 
                   <div className="text-sm opacity-70 mt-1">
@@ -183,16 +181,18 @@ export default async function HomePage() {
                           : "Room opens 5 minutes before start"}
                       </div>
                     </div>
-                  ) : (
+                  ) : isAdmin ? (
                     <form action={joinSession}>
                       <input type="hidden" name="sessionId" value={s.id} />
                       <button
                         className="px-3 py-2 rounded bg-black text-white disabled:opacity-40"
                         disabled={isFull}
                       >
-                        {isFull ? "Full" : "Sign Up for Session"}
+                        {isFull ? "Full" : "Admin: Sign Up Free"}
                       </button>
                     </form>
+                  ) : (
+                    <PayButton sessionId={s.id} disabled={isFull} />
                   )}
                 </div>
               </div>
