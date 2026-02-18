@@ -12,7 +12,16 @@ type SessionRow = {
   duration_minutes: number;
   seat_cap: number;
   status: string;
+  price_cents: number;
 };
+
+function formatUsd(cents: number) {
+  const safe = Number.isFinite(cents) ? cents : 0;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(safe / 100);
+}
 
 function isJoinWindowOpen(startsAtIso: string, durationMinutes: number) {
   const start = new Date(startsAtIso).getTime();
@@ -37,7 +46,7 @@ export default async function HomePage() {
 
   const { data: sessions, error: sessionsError } = await supabaseAdmin
     .from("sessions")
-    .select("id,title,starts_at,duration_minutes,seat_cap,status")
+    .select("id,title,starts_at,duration_minutes,seat_cap,status,price_cents")
     .order("starts_at", { ascending: true });
 
   if (sessionsError) {
@@ -55,6 +64,20 @@ export default async function HomePage() {
 
   const typedSessions = (sessions ?? []) as SessionRow[];
   const sessionIds = typedSessions.map((s) => s.id);
+
+  // For generic copy at top (if prices differ per session, this will be "from $X")
+  const prices = typedSessions
+    .map((s) => Number(s.price_cents))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  const minPriceCents = prices.length ? Math.min(...prices) : 0;
+  const maxPriceCents = prices.length ? Math.max(...prices) : 0;
+
+  const priceSummary =
+    minPriceCents === 0
+      ? ""
+      : minPriceCents === maxPriceCents
+      ? `${formatUsd(minPriceCents)}`
+      : `from ${formatUsd(minPriceCents)}`;
 
   const seatsBySession = new Map<string, number>();
   const joinedSet = new Set<string>();
@@ -119,7 +142,8 @@ export default async function HomePage() {
                 href="/sign-in"
                 className="inline-block text-sm underline text-white/80 hover:text-white"
               >
-                Sign in to reserve spot ($1) →
+                Sign in to reserve spot{priceSummary ? ` (${priceSummary})` : ""}{" "}
+                →
               </Link>
             </div>
           )}
@@ -147,7 +171,9 @@ export default async function HomePage() {
             <p className="text-sm text-white/70">
               {userId
                 ? "Spots are live."
-                : "Browse sessions below. Sign in to reserve a spot ($1)."}
+                : `Browse sessions below. Sign in to reserve a spot${
+                    priceSummary ? ` (${priceSummary})` : ""
+                  }.`}
             </p>
             <p className="text-xs text-white/60">
               “Join Room” becomes available 5 minutes before start time (after
@@ -162,7 +188,10 @@ export default async function HomePage() {
               const isFull = seats >= totalCap;
 
               const alreadyJoined = userId ? joinedSet.has(s.id) : false;
-              const canJoinNow = isJoinWindowOpen(s.starts_at, s.duration_minutes);
+              const canJoinNow = isJoinWindowOpen(
+                s.starts_at,
+                s.duration_minutes
+              );
 
               return (
                 <div
@@ -177,6 +206,9 @@ export default async function HomePage() {
                     <div className="text-sm text-gray-600">
                       <LocalTime iso={s.starts_at} /> • {s.duration_minutes} min •{" "}
                       {s.status}
+                      {Number.isFinite(s.price_cents) && s.price_cents > 0
+                        ? ` • ${formatUsd(s.price_cents)}`
+                        : ""}
                     </div>
 
                     <div className="text-sm text-gray-600 mt-1">
@@ -224,7 +256,11 @@ export default async function HomePage() {
                           isFull ? "bg-black opacity-40 pointer-events-none" : "bg-black"
                         }`}
                       >
-                        {isFull ? "Full" : "Sign in to reserve spot ($1)"}
+                        {isFull
+                          ? "Full"
+                          : `Sign in to reserve spot${
+                              s.price_cents > 0 ? ` (${formatUsd(s.price_cents)})` : ""
+                            }`}
                       </Link>
                     ) : isAdmin ? (
                       <form action={joinSession}>
@@ -237,7 +273,11 @@ export default async function HomePage() {
                         </button>
                       </form>
                     ) : (
-                      <PayButton sessionId={s.id} disabled={isFull} />
+                      <PayButton
+                        sessionId={s.id}
+                        priceCents={s.price_cents}
+                        disabled={isFull}
+                      />
                     )}
                   </div>
                 </div>

@@ -26,7 +26,7 @@ export default async function SessionJoinPage({
 
   const { data: session, error: sessionError } = await supabaseAdmin
     .from("sessions")
-    .select("id, title, starts_at, duration_minutes")
+    .select("id, title, starts_at, duration_minutes, zoom_link")
     .eq("id", sessionId)
     .single();
 
@@ -76,6 +76,12 @@ export default async function SessionJoinPage({
     );
   }
 
+  // ✅ NEW: If the session has a zoom_link override, use it (single-room mode)
+  if (session.zoom_link && session.zoom_link.trim().length > 0) {
+    redirect(session.zoom_link.trim());
+  }
+
+  // Otherwise keep existing multi-room split behavior
   const { data: roomNumber, error: roomErr } = await supabaseAdmin.rpc(
     "get_room_for_user",
     {

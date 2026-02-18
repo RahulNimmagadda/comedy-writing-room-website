@@ -91,12 +91,53 @@ function nycInputToIso(local: string) {
   // Iterate to account for DST boundaries (usually stabilizes in 1-2 passes).
   for (let i = 0; i < 3; i++) {
     const offsetMin = getTimeZoneOffsetMinutes(new Date(utcMs), NYC_TZ);
-    const corrected = Date.UTC(yyyy, month - 1, day, hour, minute, 0) - offsetMin * 60000;
+    const corrected =
+      Date.UTC(yyyy, month - 1, day, hour, minute, 0) - offsetMin * 60000;
     if (corrected === utcMs) break;
     utcMs = corrected;
   }
 
   return new Date(utcMs).toISOString();
+}
+
+function parsePriceCents(formData: FormData) {
+  const raw = String(formData.get("price_dollars") ?? "").trim();
+  const dollars = Number(raw);
+
+  if (!Number.isFinite(dollars) || dollars < 0) {
+    throw new Error("Invalid price.");
+  }
+
+  // Avoid float weirdness by rounding to nearest cent.
+  return Math.round(dollars * 100);
+}
+
+async function resolveZoomLinkFromForm(formData: FormData) {
+  const zoom_room_number_raw = String(formData.get("zoom_room_number") ?? "")
+    .trim()
+    .replace(/\s+/g, "");
+
+  const zoom_link_manual = String(formData.get("zoom_link") ?? "").trim();
+
+  // If a room is selected, use its link (authoritative).
+  if (zoom_room_number_raw) {
+    const roomNumber = Number(zoom_room_number_raw);
+    if (!Number.isFinite(roomNumber)) throw new Error("Invalid zoom room.");
+
+    const { data, error } = await supabaseAdmin
+      .from("zoom_rooms")
+      .select("zoom_link")
+      .eq("room_number", roomNumber)
+      .single();
+
+    if (error) throw new Error(error.message);
+    if (!data?.zoom_link) throw new Error("Zoom room missing zoom_link.");
+
+    return data.zoom_link as string;
+  }
+
+  // Otherwise, allow manual link (or blank = null)
+  return zoom_link_manual || null;
 }
 
 export async function createSession(formData: FormData) {
@@ -116,6 +157,8 @@ export async function createSession(formData: FormData) {
     throw new Error("Invalid seat cap.");
 
   const starts_at = nycInputToIso(starts_at_local);
+  const price_cents = parsePriceCents(formData);
+  const zoom_link = await resolveZoomLinkFromForm(formData);
 
   const { error } = await supabaseAdmin.from("sessions").insert({
     title,
@@ -123,11 +166,14 @@ export async function createSession(formData: FormData) {
     duration_minutes,
     seat_cap,
     status,
+    price_cents,
+    zoom_link,
   });
 
   if (error) throw new Error(error.message);
 
   revalidatePath("/");
+  revalidatePath("/sessions");
   revalidatePath("/admin/sessions");
 }
 
@@ -150,15 +196,26 @@ export async function updateSession(formData: FormData) {
     throw new Error("Invalid seat cap.");
 
   const starts_at = nycInputToIso(starts_at_local);
+  const price_cents = parsePriceCents(formData);
+  const zoom_link = await resolveZoomLinkFromForm(formData);
 
   const { error } = await supabaseAdmin
     .from("sessions")
-    .update({ title, starts_at, duration_minutes, seat_cap, status })
+    .update({
+      title,
+      starts_at,
+      duration_minutes,
+      seat_cap,
+      status,
+      price_cents,
+      zoom_link,
+    })
     .eq("id", id);
 
   if (error) throw new Error(error.message);
 
   revalidatePath("/");
+  revalidatePath("/sessions");
   revalidatePath("/admin/sessions");
 }
 
@@ -172,5 +229,6 @@ export async function deleteSession(formData: FormData) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/");
+  revalidatePath("/sessions");
   revalidatePath("/admin/sessions");
 }

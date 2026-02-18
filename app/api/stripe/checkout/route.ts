@@ -1,93 +1,118 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { stripe } from "@/lib/stripe";
+
+type Body = { sessionId?: string };
+
+function getBaseUrl(req: Request) {
+  // Prefer explicit env var if you have it.
+  const envUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL;
+
+  if (envUrl) return envUrl.replace(/\/$/, "");
+
+  // Fallback: infer from request origin (works on Vercel too).
+  const origin = req.headers.get("origin");
+  if (origin) return origin.replace(/\/$/, "");
+
+  // Last resort for some edge cases
+  const host = req.headers.get("host");
+  const proto = req.headers.get("x-forwarded-proto") || "https";
+  if (host) return `${proto}://${host}`.replace(/\/$/, "");
+
+  throw new Error("Could not determine base URL for Stripe redirect.");
+}
 
 export async function POST(req: Request) {
   try {
     const { userId } = auth();
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Not signed in" }, { status: 401 });
     }
 
-    const body = (await req.json().catch(() => null)) as
-      | null
-      | { sessionId?: string };
-
-    const sessionId = body?.sessionId;
+    const body = (await req.json()) as Body;
+    const sessionId = String(body.sessionId ?? "").trim();
     if (!sessionId) {
+      return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
+    }
+
+    // Fetch price/title from DB (source of truth)
+    const { data: sessionRow, error: sessionErr } = await supabaseAdmin
+      .from("sessions")
+      .select("id,title,price_cents,status")
+      .eq("id", sessionId)
+      .single();
+
+    if (sessionErr) {
+      return NextResponse.json({ error: sessionErr.message }, { status: 400 });
+    }
+
+    if (!sessionRow) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+
+    if (sessionRow.status !== "scheduled") {
       return NextResponse.json(
-        { error: "Missing sessionId" },
+        { error: "This session is not available for purchase." },
         { status: 400 }
       );
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    if (!appUrl) {
+    const priceCents = Number(sessionRow.price_cents);
+    if (!Number.isFinite(priceCents) || priceCents < 0) {
       return NextResponse.json(
-        { error: "Missing NEXT_PUBLIC_APP_URL env var" },
-        { status: 500 }
-      );
-    }
-
-    // OPTIONAL BUT STRONGLY RECOMMENDED:
-    // Prevent creating checkout if user already booked
-    const { data: existing } = await supabaseAdmin
-      .from("bookings")
-      .select("id")
-      .eq("session_id", sessionId)
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (existing) {
-      return NextResponse.json(
-        { error: "Already signed up for this session" },
+        { error: "Invalid session price." },
         { status: 400 }
       );
     }
+
+    if (priceCents === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "This session price is $0. If you want free signup, implement a non-Stripe join flow.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const baseUrl = getBaseUrl(req);
+    const successUrl = `${baseUrl}/?signup=${encodeURIComponent(
+      sessionId
+    )}&paid=1`;
+    const cancelUrl = `${baseUrl}/?signup=${encodeURIComponent(sessionId)}&c=1`;
 
     const checkout = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            unit_amount: 100, // $1.00
-            product_data: {
-              name: "Writing Room Session",
-              description: "Reserve a spot for this session",
-            },
-          },
-          quantity: 1,
-        },
-      ],
-      success_url: `${appUrl}/sessions/success?cs_id={CHECKOUT_SESSION_ID}&session_id=${encodeURIComponent(
-        sessionId
-      )}`,
-      cancel_url: `${appUrl}/?canceled=1`,
+      client_reference_id: `${userId}:${sessionId}`,
       metadata: {
         clerk_user_id: userId,
-        writing_session_id: sessionId,
+        session_id: sessionId,
       },
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: priceCents,
+            product_data: {
+              name: sessionRow.title || "Writing Room Session",
+            },
+          },
+        },
+      ],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
     });
 
-    if (!checkout.url) {
-      return NextResponse.json(
-        { error: "Stripe did not return checkout URL" },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json({ url: checkout.url });
-  } catch (err: unknown) {
+  } catch (e: unknown) {
     const message =
-      err instanceof Error
-        ? err.message
-        : typeof err === "string"
-        ? err
-        : "Something went wrong";
-
+      e instanceof Error ? e.message : typeof e === "string" ? e : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
