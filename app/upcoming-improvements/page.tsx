@@ -1,93 +1,130 @@
-export const metadata = {
-  title: "Upcoming Improvements | Comedy Writing Room",
-  description:
-    "See what we’re building next based on feedback from the Comedy Writing Room community.",
+import Link from "next/link";
+
+type Item = {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
 };
 
-export default function UpcomingImprovementsPage() {
+function Card({ item }: { item: Item }) {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="text-3xl font-bold tracking-tight">
-        Upcoming Improvements 🚀
-      </h1>
+    <div className="rounded-2xl border border-zinc-200/70 bg-white/70 px-6 py-5 shadow-sm backdrop-blur">
+      <div className="flex items-start gap-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100/70 text-amber-900">
+          {item.icon}
+        </div>
 
-      <p className="mt-4 text-base leading-7 text-gray-600">
-        We’re building this with you. Every tweak, new session, and feature
-        comes directly from feedback in the rooms. As the community grows,
-        we’re rolling out improvements to make this the best writing gym for
-        comics anywhere in the world.
-      </p>
-
-      <div className="mt-10 space-y-10">
-        {/* 1. More Sessions */}
-        <section>
-          <h2 className="text-xl font-semibold">
-            1️⃣ More Sessions (Across Timezones)
-          </h2>
-
-          <p className="mt-3 leading-7 text-gray-600">
-            As the community grows, we’re adding more sessions across different
-            timezones. For now, we’re making sure each session has a trusted
-            Comedy Writing Room host to keep feedback structured and high-value.
+        <div className="min-w-0">
+          <div className="text-base font-semibold tracking-tight text-zinc-900">
+            {item.title}
+          </div>
+          <p className="mt-1 text-sm leading-relaxed text-zinc-600">
+            {item.description}
           </p>
-
-          <p className="mt-3 leading-7 text-gray-600">
-            If you’d like to add a session (and be a host), suggest a time{" "}
-            <a
-              href="https://docs.google.com/forms/d/e/1FAIpQLSddb6YHQoTvV11H_y85w4SYG_UhLCXhhJ9FPVF27zTkYJCDbQ/viewform?usp=header"
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium underline underline-offset-4"
-            >
-              here
-            </a>
-            .
-          </p>
-        </section>
-
-        {/* 2. Organizing Sessions Page */}
-        <section>
-          <h2 className="text-xl font-semibold">
-            2️⃣ Organizing the Sessions Page
-          </h2>
-
-          <p className="mt-3 leading-7 text-gray-600">
-            As we get more hosts and sessions, we’ll update the home page so
-            you can search and sign up by day and time.
-          </p>
-
-          <ul className="mt-4 list-disc space-y-2 pl-5 text-gray-600">
-            <li>Search by day</li>
-            <li>Filter by time</li>
-            <li>View sessions by timezone</li>
-            <li>Sign up in one click</li>
-          </ul>
-        </section>
-
-        {/* 3. Premium Room */}
-        <section>
-          <h2 className="text-xl font-semibold">
-            3️⃣ Weekly “Premium” Room ($20)
-          </h2>
-
-          <p className="mt-3 leading-7 text-gray-600">
-            For comics who are serious about their craft.
-          </p>
-
-          <ul className="mt-4 list-disc space-y-2 pl-5 text-gray-600">
-            <li>$20 sign-ups</li>
-            <li>Moderated by semi-pro+ comics</li>
-            <li>Smaller, high-intent room</li>
-            <li>Guaranteed actionable feedback</li>
-          </ul>
-
-          <p className="mt-3 leading-7 text-gray-600">
-            This ensures the people in the room with you are also serious about
-            improving — and that you leave with concrete notes, tags, and
-            rewrites.
-          </p>
-        </section>
+        </div>
       </div>
-    </main>
+    </div>
+  );
+}
+
+export default function UpcomingImprovementsPage() {
+  const items: Item[] = [
+    {
+      title: "More sessions across timezones",
+      description:
+        "We’re adding sessions at times that work for comics in Europe, Australia, and beyond — so no one has to wake up at 3am for a writing room.",
+      icon: (
+        <svg
+          viewBox="0 0 24 24"
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M21 12a9 9 0 1 1-9-9" />
+          <path d="M21 3v9h-9" />
+        </svg>
+      ),
+    },
+    {
+      title: "Session search + filtering",
+      description:
+        "Filter sessions by time, day, timezone, or host. Quickly find the rooms that fit your schedule.",
+      icon: (
+        <svg
+          viewBox="0 0 24 24"
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M21 21l-4.3-4.3" />
+          <circle cx="10.5" cy="10.5" r="6.5" />
+        </svg>
+      ),
+    },
+    {
+      title: "Zoom API automation",
+      description:
+        "Automatically create a dedicated Zoom room (and secondary rooms for overflow) for each session. No more manual links — each session gets a fresh, unique link.",
+      icon: (
+        <svg
+          viewBox="0 0 24 24"
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M15 10l4-2v8l-4-2v-4z" />
+          <rect x="3" y="7" width="12" height="10" rx="2" />
+        </svg>
+      ),
+    },
+    {
+      title: "More to come",
+      description:
+        "We’re listening. The best improvements come from people who actually use the room.",
+      icon: (
+        <svg
+          viewBox="0 0 24 24"
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-8">
+      <div>
+        <h1 className="text-4xl font-semibold tracking-tight">
+          Upcoming Improvements
+        </h1>
+        <p className="mt-2 text-sm text-zinc-600 leading-relaxed">
+          We’re building this with the community. Here’s what’s coming.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {items.map((item) => (
+          <Card key={item.title} item={item} />
+        ))}
+      </div>
+
+      <div className="rounded-2xl border border-zinc-200/70 bg-white/70 px-6 py-6 text-sm text-zinc-700 shadow-sm">
+        Want to suggest something?{" "}
+        <Link
+          href="/contact"
+          className="font-semibold text-zinc-900 underline decoration-zinc-300 underline-offset-4 hover:decoration-zinc-500"
+        >
+          Send feedback
+        </Link>
+        .
+      </div>
+    </div>
   );
 }
