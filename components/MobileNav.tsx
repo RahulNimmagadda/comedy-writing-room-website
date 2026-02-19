@@ -19,7 +19,7 @@ export default function MobileNav({ items }: { items: Item[] }) {
   }, [pathname]);
 
   return (
-    <details ref={detailsRef} className="relative md:hidden">
+    <details ref={detailsRef} className="relative z-50 md:hidden">
       <summary className="cursor-pointer list-none rounded-xl border border-zinc-300 bg-white/60 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition">
         Menu
       </summary>

@@ -227,9 +227,13 @@ export default function SessionsBrowser({
   return (
     <div className="space-y-4">
       {/* Sticky wrapper */}
-      <div className="sticky top-3 z-20">
-        {/* MOBILE: tinted filter card */}
-        <div className="sm:hidden rounded-2xl border border-amber-200/80 bg-amber-50/70 shadow-sm ring-1 ring-amber-200/60 backdrop-blur">
+      {/* Sticky wrapper */}
+<div className="sticky top-0 z-30 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
+  {/* Backdrop so the sticky control stays readable while scrolling */}
+  <div className="absolute inset-x-0 -top-[env(safe-area-inset-top)] bottom-0 bg-[#fbfaf7]/85 backdrop-blur" />
+
+  {/* MOBILE: tinted filter card */}
+  <div className="relative sm:hidden rounded-2xl border border-amber-200/80 bg-amber-50/80 shadow-sm ring-1 ring-amber-200/60">
           <details className="group">
             <summary className="list-none cursor-pointer px-4 py-3">
               <div className="flex items-center justify-between gap-3">
