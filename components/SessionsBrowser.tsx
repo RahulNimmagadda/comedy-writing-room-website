@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import PayButton from "@/components/PayButton";
 import LocalTime from "@/components/LocalTime";
 import { joinSession } from "@/app/sessions/actions";
@@ -29,10 +29,6 @@ function sessionType(priceCents: number) {
   if (!Number.isFinite(priceCents)) return "community";
   if (priceCents >= 450) return "pro";
   return "community";
-}
-
-function sessionTypeLabel(priceCents: number) {
-  return sessionType(priceCents) === "pro" ? "Pro (moderated)" : "Community";
 }
 
 function dayKeyFromLocal(utcIso: string) {
@@ -141,13 +137,8 @@ export default function SessionsBrowser({
     setTimeFilter("any");
   }
 
-  // Lightweight animation on filter changes (no extra deps)
-  const [isAnimating, setIsAnimating] = useState(false);
-  useEffect(() => {
-    setIsAnimating(true);
-    const t = window.setTimeout(() => setIsAnimating(false), 180);
-    return () => window.clearTimeout(t);
-  }, [priceFilter, dayFilter, timeFilter]);
+  // Remount the list on filter changes to trigger a CSS-only mount animation.
+  const listKey = `${priceFilter}|${dayFilter}|${timeFilter}`;
 
   return (
     <div className="space-y-4">
@@ -255,18 +246,17 @@ export default function SessionsBrowser({
 
           {/* Updated explainer */}
           <div className="mt-3 text-sm text-zinc-700">
-            <span className="font-semibold">Community:</span> $1 – for the people!
+            <span className="font-semibold">Community:</span> $1 - for the people!
             <span className="mx-2">•</span>
-            <span className="font-semibold">Pro:</span> $5 – Vetted moderators, for serious comics
+            <span className="font-semibold">Pro:</span> $5 - Vetted moderators, for serious comics
           </div>
         </div>
       </div>
 
-      {/* Sessions list */}
+      {/* Sessions list (CSS-only mount animation) */}
       <div
-        className={`space-y-3 transition-all duration-200 ${
-          isAnimating ? "opacity-70 scale-[0.99]" : "opacity-100 scale-100"
-        }`}
+        key={listKey}
+        className="space-y-3 animate-in fade-in-0 zoom-in-95 duration-200"
       >
         {filtered.map((s) => {
           const seats = seatsBySession[s.id] ?? 0;
@@ -331,9 +321,7 @@ export default function SessionsBrowser({
                   <div className="mt-2 text-sm text-zinc-600">
                     <span className="font-semibold text-zinc-900">{seats}</span>{" "}
                     comics signed up
-                    {isFull ? (
-                      <span className="ml-2 text-zinc-500">(Full)</span>
-                    ) : null}
+                    {isFull ? <span className="ml-2 text-zinc-500">(Full)</span> : null}
                     <span className="ml-2 text-zinc-500">• cap {totalCap}</span>
                   </div>
 
