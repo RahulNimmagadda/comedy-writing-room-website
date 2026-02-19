@@ -42,7 +42,7 @@ export default async function HomePage() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">
-              Writing Sessions
+              Comedy Writing Room
             </h1>
             <p className="mt-1 text-sm text-zinc-600">
               Something went wrong loading sessions.
@@ -90,7 +90,7 @@ export default async function HomePage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">
-                Writing Sessions
+                Comedy Writing Room
               </h1>
               <p className="mt-1 text-sm text-zinc-600">
                 Something went wrong loading bookings.
@@ -125,10 +125,15 @@ export default async function HomePage() {
           </div>
 
           <h1 className="mt-3 text-4xl font-semibold tracking-tight">
-            Writing Sessions
+            Comedy Writing Room
           </h1>
 
           <p className="mt-2 text-sm text-zinc-600 leading-relaxed">
+            Daily virtual writing rooms for comics. Bring your material,
+            workshop, and connect with other comedians around the world!
+          </p>
+
+          <p className="mt-3 text-sm text-zinc-600 leading-relaxed">
             Pick a session type:{" "}
             <span className="font-semibold text-zinc-900">
               Community ($1, unmoderated)
