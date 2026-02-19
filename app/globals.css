@@ -6,7 +6,7 @@ html {
 }
 
 :root {
-  --background: #ffffff;
+  --background: #fbfaf7; /* warm page background */
   --foreground: #171717;
 }
 
@@ -17,12 +17,10 @@ html {
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* NOTE:
+   Removing prefers-color-scheme dark override because it was forcing black backgrounds on iOS.
+   If we add dark mode later, we can reintroduce this intentionally with proper Tailwind theming.
+*/
 
 body {
   background: var(--background);
