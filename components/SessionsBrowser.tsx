@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PayButton from "@/components/PayButton";
 import LocalTime from "@/components/LocalTime";
 import { joinSession } from "@/app/sessions/actions";
@@ -133,96 +133,141 @@ export default function SessionsBrowser({
     });
   }, [sessions, priceFilter, dayFilter, timeFilter]);
 
+  const canClear = priceFilter !== "all" || dayFilter !== "any" || timeFilter !== "any";
+
+  function clearFilters() {
+    setPriceFilter("all");
+    setDayFilter("any");
+    setTimeFilter("any");
+  }
+
+  // Lightweight animation on filter changes (no extra deps)
+  const [isAnimating, setIsAnimating] = useState(false);
+  useEffect(() => {
+    setIsAnimating(true);
+    const t = window.setTimeout(() => setIsAnimating(false), 180);
+    return () => window.clearTimeout(t);
+  }, [priceFilter, dayFilter, timeFilter]);
+
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="rounded-2xl border border-zinc-200/70 bg-white/70 px-5 py-4 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {/* Session type pill toggle */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPriceFilter("all")}
-              className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
-                priceFilter === "all"
-                  ? "bg-zinc-900 text-white border-zinc-900"
-                  : "bg-white/60 text-zinc-900 border-zinc-200 hover:bg-white"
-              }`}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              onClick={() => setPriceFilter("community")}
-              className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
-                priceFilter === "community"
-                  ? "bg-zinc-900 text-white border-zinc-900"
-                  : "bg-white/60 text-zinc-900 border-zinc-200 hover:bg-white"
-              }`}
-            >
-              Community ($1)
-            </button>
-            <button
-              type="button"
-              onClick={() => setPriceFilter("pro")}
-              className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
-                priceFilter === "pro"
-                  ? "bg-zinc-900 text-white border-zinc-900"
-                  : "bg-white/60 text-zinc-900 border-zinc-200 hover:bg-white"
-              }`}
-            >
-              Pro ($5)
-            </button>
+      {/* Sticky Filters */}
+      <div className="sticky top-3 z-20">
+        <div className="rounded-2xl border border-zinc-300 bg-zinc-100/95 px-5 py-4 shadow-sm backdrop-blur">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-xs uppercase tracking-wider text-zinc-500 font-semibold">
+                🔎 Filter sessions
+              </div>
+              <div className="mt-0.5 text-sm text-zinc-600">
+                Find the right room by type, day, or time.
+              </div>
+            </div>
+
+            {canClear && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="shrink-0 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 transition"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
 
-          {/* Day + time */}
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-zinc-600">Day</span>
-              <select
-                value={dayFilter}
-                onChange={(e) => setDayFilter(e.target.value)}
-                className="rounded-xl border border-zinc-200 bg-white/60 px-3 py-2 text-sm"
+          {/* Controls */}
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* Session type pill toggle */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPriceFilter("all")}
+                className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
+                  priceFilter === "all"
+                    ? "bg-zinc-900 text-white border-zinc-900"
+                    : "bg-white text-zinc-900 border-zinc-300 hover:bg-zinc-50"
+                }`}
               >
-                {DAY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setPriceFilter("community")}
+                className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
+                  priceFilter === "community"
+                    ? "bg-zinc-900 text-white border-zinc-900"
+                    : "bg-white text-zinc-900 border-zinc-300 hover:bg-zinc-50"
+                }`}
+              >
+                Community ($1)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPriceFilter("pro")}
+                className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
+                  priceFilter === "pro"
+                    ? "bg-zinc-900 text-white border-zinc-900"
+                    : "bg-white text-zinc-900 border-zinc-300 hover:bg-zinc-50"
+                }`}
+              >
+                Pro ($5)
+              </button>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-zinc-600">Time</span>
-              <select
-                value={timeFilter}
-                onChange={(e) => setTimeFilter(e.target.value as TimeBucket)}
-                className="rounded-xl border border-zinc-200 bg-white/60 px-3 py-2 text-sm"
-              >
-                {TIME_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Day + time */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-zinc-600">Day</span>
+                <select
+                  value={dayFilter}
+                  onChange={(e) => setDayFilter(e.target.value)}
+                  className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"
+                >
+                  {DAY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div className="text-xs text-zinc-500 sm:pl-2">
-              Showing <span className="font-semibold">{filtered.length}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-zinc-600">Time</span>
+                <select
+                  value={timeFilter}
+                  onChange={(e) => setTimeFilter(e.target.value as TimeBucket)}
+                  className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"
+                >
+                  {TIME_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="text-xs text-zinc-500 sm:pl-2">
+                Showing <span className="font-semibold">{filtered.length}</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* One-line explanation */}
-        <div className="mt-3 text-xs text-zinc-600">
-          <span className="font-semibold">Community:</span> cheaper + less structured.
-          <span className="mx-2">•</span>
-          <span className="font-semibold">Pro:</span> moderated + capped at 5.
+          {/* Updated explainer */}
+          <div className="mt-3 text-sm text-zinc-700">
+            <span className="font-semibold">Community:</span> $1 – for the people!
+            <span className="mx-2">•</span>
+            <span className="font-semibold">Pro:</span> $5 – Vetted moderators, for serious comics
+          </div>
         </div>
       </div>
 
       {/* Sessions list */}
-      <div className="space-y-3">
+      <div
+        className={`space-y-3 transition-all duration-200 ${
+          isAnimating ? "opacity-70 scale-[0.99]" : "opacity-100 scale-100"
+        }`}
+      >
         {filtered.map((s) => {
           const seats = seatsBySession[s.id] ?? 0;
 
@@ -289,15 +334,12 @@ export default function SessionsBrowser({
                     {isFull ? (
                       <span className="ml-2 text-zinc-500">(Full)</span>
                     ) : null}
-                    <span className="ml-2 text-zinc-500">
-                      • cap {totalCap}
-                    </span>
+                    <span className="ml-2 text-zinc-500">• cap {totalCap}</span>
                   </div>
 
                   {type !== "pro" && seats > 5 && (
                     <div className="mt-2 text-xs text-zinc-500">
-                      Each room is capped at 5 people. Rooms split automatically
-                      as more comics join.
+                      Each room is capped at 5 people. Rooms split automatically as more comics join.
                     </div>
                   )}
 
@@ -328,9 +370,7 @@ export default function SessionsBrowser({
                       </Link>
 
                       <div className="text-xs text-zinc-500">
-                        {canJoinNow
-                          ? "Room is open — join now"
-                          : "Opens 5 minutes before start"}
+                        {canJoinNow ? "Room is open — join now" : "Opens 5 minutes before start"}
                       </div>
                     </div>
                   ) : !userId ? (
@@ -360,11 +400,7 @@ export default function SessionsBrowser({
                     </form>
                   ) : (
                     <div className={isFull ? "opacity-60 pointer-events-none" : ""}>
-                      <PayButton
-                        sessionId={s.id}
-                        priceCents={s.price_cents}
-                        disabled={isFull}
-                      />
+                      <PayButton sessionId={s.id} priceCents={s.price_cents} disabled={isFull} />
                       {isFull && (
                         <div className="mt-2 text-xs text-zinc-500 text-center">
                           This session is full.
