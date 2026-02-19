@@ -24,7 +24,7 @@ function formatUsd(cents: number) {
   }).format(safe / 100);
 }
 
-// Treat <= $1.50 as Community, >= $4.50 as Pro (gives you flexibility if you change prices slightly)
+// Treat <= $1.50 as Community, >= $4.50 as Pro
 function sessionType(priceCents: number) {
   if (!Number.isFinite(priceCents)) return "community";
   if (priceCents >= 450) return "pro";
@@ -33,7 +33,6 @@ function sessionType(priceCents: number) {
 
 function dayKeyFromLocal(utcIso: string) {
   const d = new Date(utcIso);
-  // Using user's local timezone intentionally
   return d.getDay(); // 0=Sun ... 6=Sat
 }
 
@@ -79,7 +78,6 @@ const TIME_OPTIONS: { label: string; value: TimeBucket; range: [number, number] 
     { label: "Morning (5a–12p)", value: "morning", range: [5 * 60, 12 * 60] },
     { label: "Afternoon (12p–5p)", value: "afternoon", range: [12 * 60, 17 * 60] },
     { label: "Evening (5p–10p)", value: "evening", range: [17 * 60, 22 * 60] },
-    // “Late” wraps; we handle separately
     { label: "Late (10p–5a)", value: "late", range: [22 * 60, 5 * 60] },
   ];
 
@@ -115,7 +113,6 @@ export default function SessionsBrowser({
       if (timeFilter !== "any") {
         const mins = minutesFromLocalMidnight(s.starts_at);
         if (timeFilter === "late") {
-          // 10p–midnight OR midnight–5a
           if (!(mins >= 22 * 60 || mins < 5 * 60)) return false;
         } else {
           const opt = TIME_OPTIONS.find((o) => o.value === timeFilter);
@@ -130,6 +127,10 @@ export default function SessionsBrowser({
   }, [sessions, priceFilter, dayFilter, timeFilter]);
 
   const canClear = priceFilter !== "all" || dayFilter !== "any" || timeFilter !== "any";
+  const activeFiltersCount =
+    (priceFilter !== "all" ? 1 : 0) +
+    (dayFilter !== "any" ? 1 : 0) +
+    (timeFilter !== "any" ? 1 : 0);
 
   function clearFilters() {
     setPriceFilter("all");
@@ -137,22 +138,149 @@ export default function SessionsBrowser({
     setTimeFilter("any");
   }
 
-  // Remount the list on filter changes to trigger a CSS-only mount animation.
   const listKey = `${priceFilter}|${dayFilter}|${timeFilter}`;
+
+  // Reusable controls block (used in mobile accordion + desktop bar)
+  function Controls({ compact }: { compact: boolean }) {
+    return (
+      <div className={compact ? "space-y-3" : "space-y-4"}>
+        {/* Type pills */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPriceFilter("all")}
+            className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+              priceFilter === "all"
+                ? "bg-zinc-900 text-white border-zinc-900"
+                : "bg-white/90 text-zinc-900 border-zinc-300 hover:bg-white"
+            }`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setPriceFilter("community")}
+            className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+              priceFilter === "community"
+                ? "bg-zinc-900 text-white border-zinc-900"
+                : "bg-white/90 text-zinc-900 border-zinc-300 hover:bg-white"
+            }`}
+          >
+            Community ($1)
+          </button>
+          <button
+            type="button"
+            onClick={() => setPriceFilter("pro")}
+            className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+              priceFilter === "pro"
+                ? "bg-zinc-900 text-white border-zinc-900"
+                : "bg-white/90 text-zinc-900 border-zinc-300 hover:bg-white"
+            }`}
+          >
+            Pro ($5)
+          </button>
+        </div>
+
+        {/* Day + time */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-white/90 px-3 py-2">
+            <span className="text-xs font-semibold text-zinc-600">Day</span>
+            <select
+              value={dayFilter}
+              onChange={(e) => setDayFilter(e.target.value)}
+              className="bg-transparent text-sm text-zinc-900 outline-none"
+            >
+              {DAY_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-white/90 px-3 py-2">
+            <span className="text-xs font-semibold text-zinc-600">Time</span>
+            <select
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value as TimeBucket)}
+              className="bg-transparent text-sm text-zinc-900 outline-none"
+            >
+              {TIME_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {/* Explainer */}
+        <div className="text-sm text-zinc-700">
+          <span className="font-semibold">Community:</span> $1 - for the people!
+          <span className="mx-2">•</span>
+          <span className="font-semibold">Pro:</span> $5 - Vetted moderators, for serious comics
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {/* Sticky Filters */}
+      {/* Sticky wrapper (works unless a parent has overflow hidden/auto) */}
       <div className="sticky top-3 z-20">
-        {/* Outer shell to make this NOT look like a session card */}
-        <div className="rounded-2xl border border-zinc-300 bg-gradient-to-b from-zinc-200/70 to-white/80 shadow-md ring-1 ring-zinc-200/70 backdrop-blur">
-          <div className="flex gap-4 px-5 py-4">
-            {/* Accent stripe */}
-            <div className="hidden sm:block w-1 rounded-full bg-amber-400" />
+        {/* MOBILE: compact accordion */}
+        <div className="sm:hidden rounded-2xl border border-zinc-300 bg-gradient-to-b from-zinc-200/70 to-white/80 shadow-md ring-1 ring-zinc-200/70 backdrop-blur">
+          <details className="group">
+            <summary className="list-none cursor-pointer px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-xs uppercase tracking-wider text-zinc-600 font-bold">
+                    Filters
+                    {activeFiltersCount > 0 ? (
+                      <span className="ml-2 inline-flex items-center rounded-full border border-zinc-300 bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-zinc-700">
+                        {activeFiltersCount} active
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-0.5 text-xs text-zinc-600">
+                    Showing <span className="font-semibold">{filtered.length}</span>
+                  </div>
+                </div>
 
-            {/* Content */}
+                <div className="flex items-center gap-2">
+                  {canClear && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        clearFilters();
+                      }}
+                      className="rounded-xl border border-zinc-300 bg-white/80 px-3 py-2 text-xs font-semibold text-zinc-900"
+                    >
+                      Clear
+                    </button>
+                  )}
+
+                  <span className="text-xs font-semibold text-zinc-700">
+                    <span className="group-open:hidden">Open ▾</span>
+                    <span className="hidden group-open:inline">Close ▴</span>
+                  </span>
+                </div>
+              </div>
+            </summary>
+
+            <div className="px-4 pb-4">
+              <Controls compact={true} />
+            </div>
+          </details>
+        </div>
+
+        {/* DESKTOP: full control surface */}
+        <div className="hidden sm:block rounded-2xl border border-zinc-300 bg-gradient-to-b from-zinc-200/70 to-white/80 shadow-md ring-1 ring-zinc-200/70 backdrop-blur">
+          <div className="flex gap-4 px-5 py-4">
+            <div className="w-1 rounded-full bg-amber-400" />
+
             <div className="min-w-0 flex-1">
-              {/* Header */}
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-xs uppercase tracking-wider text-zinc-600 font-bold">
@@ -163,112 +291,38 @@ export default function SessionsBrowser({
                   </div>
                 </div>
 
-                {canClear && (
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="shrink-0 rounded-xl border border-zinc-300 bg-white/80 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition"
-                  >
-                    Clear filters
-                  </button>
-                )}
-              </div>
-
-              {/* Controls */}
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                {/* Session type pill toggle */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPriceFilter("all")}
-                    className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
-                      priceFilter === "all"
-                        ? "bg-zinc-900 text-white border-zinc-900"
-                        : "bg-white/80 text-zinc-900 border-zinc-300 hover:bg-white"
-                    }`}
-                  >
-                    All
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPriceFilter("community")}
-                    className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
-                      priceFilter === "community"
-                        ? "bg-zinc-900 text-white border-zinc-900"
-                        : "bg-white/80 text-zinc-900 border-zinc-300 hover:bg-white"
-                    }`}
-                  >
-                    Community ($1)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPriceFilter("pro")}
-                    className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
-                      priceFilter === "pro"
-                        ? "bg-zinc-900 text-white border-zinc-900"
-                        : "bg-white/80 text-zinc-900 border-zinc-300 hover:bg-white"
-                    }`}
-                  >
-                    Pro ($5)
-                  </button>
-                </div>
-
-                {/* Day + time */}
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-zinc-600">Day</span>
-                    <select
-                      value={dayFilter}
-                      onChange={(e) => setDayFilter(e.target.value)}
-                      className="rounded-xl border border-zinc-300 bg-white/90 px-3 py-2 text-sm"
-                    >
-                      {DAY_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-zinc-600">Time</span>
-                    <select
-                      value={timeFilter}
-                      onChange={(e) => setTimeFilter(e.target.value as TimeBucket)}
-                      className="rounded-xl border border-zinc-300 bg-white/90 px-3 py-2 text-sm"
-                    >
-                      {TIME_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="text-xs text-zinc-500 sm:pl-2">
+                <div className="flex items-center gap-3">
+                  <div className="text-xs text-zinc-600">
                     Showing <span className="font-semibold">{filtered.length}</span>
                   </div>
+
+                  {canClear && (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="shrink-0 rounded-xl border border-zinc-300 bg-white/80 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition"
+                    >
+                      Clear filters
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Updated explainer */}
-              <div className="mt-3 text-sm text-zinc-700">
-                <span className="font-semibold">Community:</span> $1 - for the people!
-                <span className="mx-2">•</span>
-                <span className="font-semibold">Pro:</span> $5 - Vetted moderators, for serious comics
+              <div className="mt-4">
+                <Controls compact={false} />
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Sessions list (CSS-only mount animation) */}
+      {/* Sessions list */}
       <div key={listKey} className="space-y-3 animate-in fade-in-0 zoom-in-95 duration-200">
         {filtered.map((s) => {
           const seats = seatsBySession[s.id] ?? 0;
 
           const type = sessionType(s.price_cents);
-          const totalCap = type === "pro" ? s.seat_cap : s.seat_cap * 5; // Pro is “one room”
+          const totalCap = type === "pro" ? s.seat_cap : s.seat_cap * 5;
           const isFull = seats >= totalCap;
 
           const alreadyJoined = userId ? joinedSet.has(s.id) : false;
@@ -293,13 +347,13 @@ export default function SessionsBrowser({
           return (
             <div
               key={s.id}
-              className="rounded-2xl border border-zinc-200/70 bg-white/70 px-6 py-5 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md"
+              className="rounded-2xl border border-zinc-200/70 bg-white/70 px-4 py-4 sm:px-6 sm:py-5 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md"
             >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 {/* Left */}
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-sm text-zinc-500">
+                    <div className="text-xs sm:text-sm text-zinc-500">
                       <LocalTime iso={s.starts_at} />
                     </div>
 
@@ -320,7 +374,7 @@ export default function SessionsBrowser({
                     </span>
                   </div>
 
-                  <div className="mt-2 text-lg font-semibold tracking-tight text-zinc-900 truncate">
+                  <div className="mt-2 text-base sm:text-lg font-semibold tracking-tight text-zinc-900 truncate">
                     {s.title}
                   </div>
 
@@ -331,17 +385,19 @@ export default function SessionsBrowser({
                     <span className="ml-2 text-zinc-500">• cap {totalCap}</span>
                   </div>
 
-                  {type !== "pro" && seats > 5 && (
-                    <div className="mt-2 text-xs text-zinc-500">
-                      Each room is capped at 5 people. Rooms split automatically as more comics join.
-                    </div>
-                  )}
-
-                  {type === "pro" && (
-                    <div className="mt-2 text-xs text-zinc-500">
-                      Moderated session. Strict 5-person cap to keep feedback high-signal.
-                    </div>
-                  )}
+                  {/* Hide the extra helper lines on mobile to reduce height */}
+                  <div className="hidden sm:block">
+                    {type !== "pro" && seats > 5 && (
+                      <div className="mt-2 text-xs text-zinc-500">
+                        Each room is capped at 5 people. Rooms split automatically as more comics join.
+                      </div>
+                    )}
+                    {type === "pro" && (
+                      <div className="mt-2 text-xs text-zinc-500">
+                        Moderated session. Strict 5-person cap to keep feedback high-signal.
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Right actions */}
