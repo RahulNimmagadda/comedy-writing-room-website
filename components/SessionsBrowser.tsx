@@ -144,120 +144,126 @@ export default function SessionsBrowser({
     <div className="space-y-4">
       {/* Sticky Filters */}
       <div className="sticky top-3 z-20">
-        <div className="rounded-2xl border border-zinc-300 bg-zinc-100/95 px-5 py-4 shadow-sm backdrop-blur">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-xs uppercase tracking-wider text-zinc-500 font-semibold">
-                🔎 Filter sessions
+        {/* Outer shell to make this NOT look like a session card */}
+        <div className="rounded-2xl border border-zinc-300 bg-gradient-to-b from-zinc-200/70 to-white/80 shadow-md ring-1 ring-zinc-200/70 backdrop-blur">
+          <div className="flex gap-4 px-5 py-4">
+            {/* Accent stripe */}
+            <div className="hidden sm:block w-1 rounded-full bg-amber-400" />
+
+            {/* Content */}
+            <div className="min-w-0 flex-1">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-zinc-600 font-bold">
+                    🔎 Filter sessions
+                  </div>
+                  <div className="mt-0.5 text-sm text-zinc-600">
+                    Find the right room by type, day, or time.
+                  </div>
+                </div>
+
+                {canClear && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="shrink-0 rounded-xl border border-zinc-300 bg-white/80 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition"
+                  >
+                    Clear filters
+                  </button>
+                )}
               </div>
-              <div className="mt-0.5 text-sm text-zinc-600">
-                Find the right room by type, day, or time.
+
+              {/* Controls */}
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                {/* Session type pill toggle */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPriceFilter("all")}
+                    className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
+                      priceFilter === "all"
+                        ? "bg-zinc-900 text-white border-zinc-900"
+                        : "bg-white/80 text-zinc-900 border-zinc-300 hover:bg-white"
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPriceFilter("community")}
+                    className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
+                      priceFilter === "community"
+                        ? "bg-zinc-900 text-white border-zinc-900"
+                        : "bg-white/80 text-zinc-900 border-zinc-300 hover:bg-white"
+                    }`}
+                  >
+                    Community ($1)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPriceFilter("pro")}
+                    className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
+                      priceFilter === "pro"
+                        ? "bg-zinc-900 text-white border-zinc-900"
+                        : "bg-white/80 text-zinc-900 border-zinc-300 hover:bg-white"
+                    }`}
+                  >
+                    Pro ($5)
+                  </button>
+                </div>
+
+                {/* Day + time */}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-zinc-600">Day</span>
+                    <select
+                      value={dayFilter}
+                      onChange={(e) => setDayFilter(e.target.value)}
+                      className="rounded-xl border border-zinc-300 bg-white/90 px-3 py-2 text-sm"
+                    >
+                      {DAY_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-zinc-600">Time</span>
+                    <select
+                      value={timeFilter}
+                      onChange={(e) => setTimeFilter(e.target.value as TimeBucket)}
+                      className="rounded-xl border border-zinc-300 bg-white/90 px-3 py-2 text-sm"
+                    >
+                      {TIME_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="text-xs text-zinc-500 sm:pl-2">
+                    Showing <span className="font-semibold">{filtered.length}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Updated explainer */}
+              <div className="mt-3 text-sm text-zinc-700">
+                <span className="font-semibold">Community:</span> $1 - for the people!
+                <span className="mx-2">•</span>
+                <span className="font-semibold">Pro:</span> $5 - Vetted moderators, for serious comics
               </div>
             </div>
-
-            {canClear && (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="shrink-0 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 transition"
-              >
-                Clear filters
-              </button>
-            )}
-          </div>
-
-          {/* Controls */}
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            {/* Session type pill toggle */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPriceFilter("all")}
-                className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
-                  priceFilter === "all"
-                    ? "bg-zinc-900 text-white border-zinc-900"
-                    : "bg-white text-zinc-900 border-zinc-300 hover:bg-zinc-50"
-                }`}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                onClick={() => setPriceFilter("community")}
-                className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
-                  priceFilter === "community"
-                    ? "bg-zinc-900 text-white border-zinc-900"
-                    : "bg-white text-zinc-900 border-zinc-300 hover:bg-zinc-50"
-                }`}
-              >
-                Community ($1)
-              </button>
-              <button
-                type="button"
-                onClick={() => setPriceFilter("pro")}
-                className={`rounded-xl px-3 py-2 text-sm font-semibold border transition ${
-                  priceFilter === "pro"
-                    ? "bg-zinc-900 text-white border-zinc-900"
-                    : "bg-white text-zinc-900 border-zinc-300 hover:bg-zinc-50"
-                }`}
-              >
-                Pro ($5)
-              </button>
-            </div>
-
-            {/* Day + time */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-zinc-600">Day</span>
-                <select
-                  value={dayFilter}
-                  onChange={(e) => setDayFilter(e.target.value)}
-                  className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"
-                >
-                  {DAY_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-zinc-600">Time</span>
-                <select
-                  value={timeFilter}
-                  onChange={(e) => setTimeFilter(e.target.value as TimeBucket)}
-                  className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"
-                >
-                  {TIME_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="text-xs text-zinc-500 sm:pl-2">
-                Showing <span className="font-semibold">{filtered.length}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Updated explainer */}
-          <div className="mt-3 text-sm text-zinc-700">
-            <span className="font-semibold">Community:</span> $1 - for the people!
-            <span className="mx-2">•</span>
-            <span className="font-semibold">Pro:</span> $5 - Vetted moderators, for serious comics
           </div>
         </div>
       </div>
 
       {/* Sessions list (CSS-only mount animation) */}
-      <div
-        key={listKey}
-        className="space-y-3 animate-in fade-in-0 zoom-in-95 duration-200"
-      >
+      <div key={listKey} className="space-y-3 animate-in fade-in-0 zoom-in-95 duration-200">
         {filtered.map((s) => {
           const seats = seatsBySession[s.id] ?? 0;
 
