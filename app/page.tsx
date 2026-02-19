@@ -51,14 +51,22 @@ export default async function HomePage() {
 
   if (sessionsError) {
     return (
-      <main className="min-h-screen bg-black text-white px-4 py-10">
-        <div className="mx-auto max-w-2xl space-y-6">
-          <h1 className="text-2xl font-bold">Upcoming Sessions</h1>
-          <pre className="p-4 border border-white/15 rounded overflow-auto bg-white text-gray-900">
-            {JSON.stringify(sessionsError, null, 2)}
-          </pre>
+      <div className="mx-auto max-w-2xl space-y-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Writing Sessions
+            </h1>
+            <p className="mt-1 text-sm text-zinc-600">
+              Something went wrong loading sessions.
+            </p>
+          </div>
         </div>
-      </main>
+
+        <pre className="rounded-2xl border border-zinc-200/70 bg-white/70 p-4 text-xs text-zinc-800 overflow-auto">
+          {JSON.stringify(sessionsError, null, 2)}
+        </pre>
+      </div>
     );
   }
 
@@ -90,14 +98,22 @@ export default async function HomePage() {
 
     if (bookingsError) {
       return (
-        <main className="min-h-screen bg-black text-white px-4 py-10">
-          <div className="mx-auto max-w-2xl space-y-6">
-            <h1 className="text-2xl font-bold">Upcoming Sessions</h1>
-            <pre className="p-4 border border-white/15 rounded overflow-auto bg-white text-gray-900">
-              {JSON.stringify(bookingsError, null, 2)}
-            </pre>
+        <div className="mx-auto max-w-2xl space-y-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight">
+                Writing Sessions
+              </h1>
+              <p className="mt-1 text-sm text-zinc-600">
+                Something went wrong loading bookings.
+              </p>
+            </div>
           </div>
-        </main>
+
+          <pre className="rounded-2xl border border-zinc-200/70 bg-white/70 p-4 text-xs text-zinc-800 overflow-auto">
+            {JSON.stringify(bookingsError, null, 2)}
+          </pre>
+        </div>
       );
     }
 
@@ -111,202 +127,212 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-black text-white">
-      <div className="mx-auto max-w-2xl space-y-10 px-4 py-10 sm:px-6">
-        {/* Hero */}
-        <div className="text-center space-y-4 relative">
-          {isAdmin && (
-            <div className="absolute top-0 right-0">
-              <Link
-                href="/admin/sessions"
-                className="text-sm underline text-white/70 hover:text-white"
-              >
-                Admin
-              </Link>
-            </div>
-          )}
+    <div className="mx-auto max-w-3xl space-y-10">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-6">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 text-xs font-medium text-zinc-600">
+            <span className="inline-flex h-5 items-center rounded-full border border-zinc-200 bg-white/60 px-2">
+              Upcoming sessions
+            </span>
+          </div>
 
-          <h1 className="text-4xl font-bold sm:text-5xl">
-            Comedy Writing Room
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight">
+            Writing Sessions
           </h1>
 
-          <p className="text-base sm:text-lg text-white/70 max-w-prose mx-auto">
-            Daily writing sessions with comics across the globe. Bring material,
-            give and get feedback, and sharpen your jokes while meeting other
-            comics.
+          <p className="mt-2 text-sm text-zinc-600 leading-relaxed">
+            Structured, 60-minute writing rooms for comics. Reserve your seat
+            {priceSummary ? ` (${priceSummary})` : ""}.
           </p>
 
-          {!userId && (
-            <div className="pt-2">
-              <Link
-                href="/sign-in"
-                className="inline-block text-sm underline text-white/80 hover:text-white"
-              >
-                Sign in to reserve spot{priceSummary ? ` (${priceSummary})` : ""}{" "}
-                →
-              </Link>
-            </div>
-          )}
+          <p className="mt-2 text-xs text-zinc-500">
+            “Join Room” opens <span className="font-semibold">5 minutes</span>{" "}
+            before start time (after you reserve your spot).
+          </p>
         </div>
 
-        {/* Beta banner */}
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-          <div className="flex items-start gap-2">
-            <span aria-hidden className="mt-0.5">
-              ⚠️
-            </span>
-            <p className="text-sm leading-relaxed">
-              <span className="font-semibold">Beta Mode - Friends of Rah:</span>{" "}
-              Please don&apos;t share this publicly yet. I&apos;m very excited,
-              but still working out the kinks (ayo)! Lmk directly if you have
-              feedback, questions, etc.
-            </p>
-          </div>
+        {isAdmin && (
+          <Link
+            href="/admin/sessions"
+            className="shrink-0 rounded-xl border border-zinc-300 bg-white/60 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition"
+          >
+            Admin
+          </Link>
+        )}
+      </div>
+
+      {/* Beta note */}
+      <div className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-5 py-4 text-amber-950 shadow-sm">
+        <div className="flex items-start gap-3">
+          <span aria-hidden className="mt-0.5">
+            ⚠️
+          </span>
+          <p className="text-sm leading-relaxed">
+            <span className="font-semibold">Beta Mode — Friends of Rah:</span>{" "}
+            Please don&apos;t share this publicly yet. I&apos;m very excited,
+            but still working out the kinks (ayo)! Lmk directly if you have
+            feedback, questions, etc.
+          </p>
         </div>
+      </div>
 
-        {/* Upcoming sessions */}
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-semibold">Upcoming Sessions</h2>
-            <p className="text-sm text-white/70">
-              {userId
-                ? "Spots are live."
-                : `Browse sessions below. Sign in to reserve a spot${
-                    priceSummary ? ` (${priceSummary})` : ""
-                  }.`}
-            </p>
-            <p className="text-xs text-white/60">
-              “Join Room” becomes available 5 minutes before start time (after
-              you reserve your spot).
-            </p>
-          </div>
+      {/* Sessions list */}
+      <div className="space-y-3">
+        {typedSessions.map((s) => {
+          const seats = seatsBySession.get(s.id) ?? 0;
+          const totalCap = s.seat_cap * 5;
+          const isFull = seats >= totalCap;
 
-          <div className="space-y-3">
-            {typedSessions.map((s) => {
-              const seats = seatsBySession.get(s.id) ?? 0;
-              const totalCap = s.seat_cap * 5;
-              const isFull = seats >= totalCap;
+          const alreadyJoined = userId ? joinedSet.has(s.id) : false;
+          const canJoinNow = isJoinWindowOpen(s.starts_at, s.duration_minutes);
 
-              const alreadyJoined = userId ? joinedSet.has(s.id) : false;
-              const canJoinNow = isJoinWindowOpen(
-                s.starts_at,
-                s.duration_minutes
-              );
+          const priceLabel =
+            Number.isFinite(s.price_cents) && s.price_cents > 0
+              ? formatUsd(s.price_cents)
+              : "";
 
-              return (
-                <div
-                  key={s.id}
-                  className="border border-gray-200 rounded-2xl p-4 flex items-center justify-between gap-4 bg-white text-gray-900 shadow-sm"
-                >
-                  <div className="min-w-0">
-                    <div className="font-semibold text-gray-900 truncate">
-                      {s.title}
+          return (
+            <div
+              key={s.id}
+              className="rounded-2xl border border-zinc-200/70 bg-white/70 px-6 py-5 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                {/* Left */}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="text-sm text-zinc-500">
+                      <LocalTime iso={s.starts_at} />
                     </div>
 
-                    <div className="text-sm text-gray-600">
-                      <LocalTime iso={s.starts_at} /> • {s.duration_minutes} min •{" "}
+                    {priceLabel ? (
+                      <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white/60 px-2 py-0.5 text-xs font-medium text-zinc-700">
+                        {priceLabel}
+                      </span>
+                    ) : null}
+
+                    <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white/60 px-2 py-0.5 text-xs font-medium text-zinc-700">
+                      {s.duration_minutes} min
+                    </span>
+
+                    <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white/60 px-2 py-0.5 text-xs font-medium text-zinc-700">
                       {s.status}
-                      {Number.isFinite(s.price_cents) && s.price_cents > 0
-                        ? ` • ${formatUsd(s.price_cents)}`
-                        : ""}
-                    </div>
-
-                    <div className="text-sm text-gray-600 mt-1">
-                      {seats} comics signed up
-                    </div>
-
-                    {seats > 5 && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        Each room is capped at 5 people. Rooms split automatically
-                        as more comics join.
-                      </div>
-                    )}
+                    </span>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
-                    {alreadyJoined ? (
-                      <div className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <div className="text-sm px-3 py-2 rounded border border-gray-200 bg-gray-50 inline-block text-gray-900">
-                            Reserved ✅
-                          </div>
+                  <div className="mt-2 text-lg font-semibold tracking-tight text-zinc-900 truncate">
+                    {s.title}
+                  </div>
 
-                          <Link
-                            href={`/sessions/${s.id}/join`}
-                            className={`px-3 py-2 rounded text-white ${
-                              canJoinNow
-                                ? "bg-black"
-                                : "bg-black opacity-40 pointer-events-none"
-                            }`}
-                          >
-                            Join Room
-                          </Link>
-                        </div>
+                  <div className="mt-2 text-sm text-zinc-600">
+                    <span className="font-semibold text-zinc-900">{seats}</span>{" "}
+                    comics signed up
+                    {isFull ? (
+                      <span className="ml-2 text-zinc-500">(Full)</span>
+                    ) : null}
+                  </div>
 
-                        <div className="text-xs text-gray-500 mt-1">
-                          {canJoinNow
-                            ? "Room is open — join now"
-                            : "Room opens 5 minutes before start"}
-                        </div>
+                  {seats > 5 && (
+                    <div className="mt-2 text-xs text-zinc-500">
+                      Each room is capped at 5 people. Rooms split automatically
+                      as more comics join.
+                    </div>
+                  )}
+                </div>
+
+                {/* Right actions */}
+                <div className="shrink-0">
+                  {alreadyJoined ? (
+                    <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                      <div className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white/60 px-3 py-2 text-sm font-semibold text-zinc-900">
+                        Reserved ✅
                       </div>
-                    ) : !userId ? (
+
                       <Link
-                        href={`/sign-in?redirect_url=${encodeURIComponent("/")}`}
-                        className={`px-3 py-2 rounded text-white ${
-                          isFull ? "bg-black opacity-40 pointer-events-none" : "bg-black"
+                        href={`/sessions/${s.id}/join`}
+                        className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-zinc-900 shadow-sm transition ${
+                          canJoinNow
+                            ? "bg-amber-500 hover:bg-amber-400 active:bg-amber-500/90"
+                            : "bg-zinc-200/70 text-zinc-500 pointer-events-none"
                         }`}
                       >
-                        {isFull
-                          ? "Full"
-                          : `Sign in to reserve spot${
-                              s.price_cents > 0 ? ` (${formatUsd(s.price_cents)})` : ""
-                            }`}
+                        Join Room
                       </Link>
-                    ) : isAdmin ? (
-                      <form action={joinSession}>
-                        <input type="hidden" name="sessionId" value={s.id} />
-                        <button
-                          className="px-3 py-2 rounded bg-black text-white disabled:opacity-40"
-                          disabled={isFull}
-                        >
-                          {isFull ? "Full" : "Admin: Reserve Free"}
-                        </button>
-                      </form>
-                    ) : (
+
+                      <div className="text-xs text-zinc-500">
+                        {canJoinNow
+                          ? "Room is open — join now"
+                          : "Opens 5 minutes before start"}
+                      </div>
+                    </div>
+                  ) : !userId ? (
+                    <Link
+                      href={`/sign-in?redirect_url=${encodeURIComponent("/")}`}
+                      className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-zinc-900 shadow-sm transition ${
+                        isFull
+                          ? "bg-zinc-200/70 text-zinc-500 pointer-events-none"
+                          : "bg-amber-500 hover:bg-amber-400 active:bg-amber-500/90"
+                      }`}
+                    >
+                      {isFull
+                        ? "Full"
+                        : `Sign in to reserve${
+                            s.price_cents > 0
+                              ? ` (${formatUsd(s.price_cents)})`
+                              : ""
+                          }`}
+                    </Link>
+                  ) : isAdmin ? (
+                    <form action={joinSession}>
+                      <input type="hidden" name="sessionId" value={s.id} />
+                      <button
+                        className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 disabled:opacity-40 transition"
+                        disabled={isFull}
+                      >
+                        {isFull ? "Full" : "Admin: Reserve Free"}
+                      </button>
+                    </form>
+                  ) : (
+                    <div className={isFull ? "opacity-60 pointer-events-none" : ""}>
                       <PayButton
                         sessionId={s.id}
                         priceCents={s.price_cents}
                         disabled={isFull}
                       />
-                    )}
-                  </div>
+                      {isFull && (
+                        <div className="mt-2 text-xs text-zinc-500 text-center">
+                          This session is full.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              );
-            })}
-
-            {typedSessions.length === 0 && (
-              <div className="border border-white/15 rounded-2xl p-4 text-white/70 bg-black">
-                No upcoming sessions yet.
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          );
+        })}
 
-        {/* Suggest a time */}
-        <div className="mt-12 p-6 border border-white/15 rounded-2xl text-center bg-white text-gray-900">
-          <p className="text-sm text-gray-700">
-            No times work for you? Want to host or add a weekly session?
-          </p>
-          <a
-            href="https://docs.google.com/forms/d/e/1FAIpQLSddb6YHQoTvV11H_y85w4SYG_UhLCXhhJ9FPVF27zTkYJCDbQ/viewform?usp=header"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block mt-3 text-sm font-semibold underline text-gray-900"
-          >
-            Suggest a time →
-          </a>
-        </div>
+        {typedSessions.length === 0 && (
+          <div className="rounded-2xl border border-zinc-200/70 bg-white/60 p-6 text-sm text-zinc-600">
+            No upcoming sessions yet.
+          </div>
+        )}
       </div>
-    </main>
+
+      {/* Suggest a time */}
+      <div className="rounded-2xl border border-zinc-200/70 bg-white/70 px-6 py-6 text-center shadow-sm">
+        <p className="text-sm text-zinc-700">
+          No times work for you? Want to host or add a weekly session?
+        </p>
+        <a
+          href="https://docs.google.com/forms/d/e/1FAIpQLSddb6YHQoTvV11H_y85w4SYG_UhLCXhhJ9FPVF27zTkYJCDbQ/viewform?usp=header"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center mt-4 rounded-xl border border-zinc-300 bg-white/60 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition"
+        >
+          Suggest a time →
+        </a>
+      </div>
+    </div>
   );
 }
