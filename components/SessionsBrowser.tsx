@@ -52,14 +52,6 @@ function isJoinWindowOpen(startsAtIso: string, durationMinutes: number) {
   return now >= openAt && now <= closeAt;
 }
 
-type Props = {
-  sessions: SessionRow[];
-  seatsBySession: Record<string, number>;
-  joinedSessionIds: string[];
-  userId: string | null;
-  isAdmin: boolean;
-};
-
 const DAY_OPTIONS: { label: string; value: string }[] = [
   { label: "Any day", value: "any" },
   { label: "Sun", value: "0" },
@@ -83,6 +75,115 @@ const TIME_OPTIONS: { label: string; value: TimeBucket; range: [number, number] 
 
 type PriceFilter = "all" | "community" | "pro";
 
+type FilterControlsProps = {
+  compact: boolean;
+  priceFilter: PriceFilter;
+  setPriceFilter: (v: PriceFilter) => void;
+  dayFilter: string;
+  setDayFilter: (v: string) => void;
+  timeFilter: TimeBucket;
+  setTimeFilter: (v: TimeBucket) => void;
+};
+
+function FilterControls({
+  compact,
+  priceFilter,
+  setPriceFilter,
+  dayFilter,
+  setDayFilter,
+  timeFilter,
+  setTimeFilter,
+}: FilterControlsProps) {
+  return (
+    <div className={compact ? "space-y-3" : "space-y-4"}>
+      {/* Type pills */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setPriceFilter("all")}
+          className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+            priceFilter === "all"
+              ? "bg-zinc-900 text-white border-zinc-900"
+              : "bg-white/90 text-zinc-900 border-zinc-300 hover:bg-white"
+          }`}
+        >
+          All
+        </button>
+        <button
+          type="button"
+          onClick={() => setPriceFilter("community")}
+          className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+            priceFilter === "community"
+              ? "bg-zinc-900 text-white border-zinc-900"
+              : "bg-white/90 text-zinc-900 border-zinc-300 hover:bg-white"
+          }`}
+        >
+          Community ($1)
+        </button>
+        <button
+          type="button"
+          onClick={() => setPriceFilter("pro")}
+          className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+            priceFilter === "pro"
+              ? "bg-zinc-900 text-white border-zinc-900"
+              : "bg-white/90 text-zinc-900 border-zinc-300 hover:bg-white"
+          }`}
+        >
+          Pro ($5)
+        </button>
+      </div>
+
+      {/* Day + time */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-white/90 px-3 py-2">
+          <span className="text-xs font-semibold text-zinc-600">Day</span>
+          <select
+            value={dayFilter}
+            onChange={(e) => setDayFilter(e.target.value)}
+            className="bg-transparent text-sm text-zinc-900 outline-none"
+          >
+            {DAY_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-white/90 px-3 py-2">
+          <span className="text-xs font-semibold text-zinc-600">Time</span>
+          <select
+            value={timeFilter}
+            onChange={(e) => setTimeFilter(e.target.value as TimeBucket)}
+            className="bg-transparent text-sm text-zinc-900 outline-none"
+          >
+            {TIME_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {/* Explainer */}
+      <div className="text-sm text-zinc-700">
+        <span className="font-semibold">Community:</span> $1 - for the people!
+        <span className="mx-2">•</span>
+        <span className="font-semibold">Pro:</span> $5 - Vetted moderators, for serious comics
+      </div>
+    </div>
+  );
+}
+
+type Props = {
+  sessions: SessionRow[];
+  seatsBySession: Record<string, number>;
+  joinedSessionIds: string[];
+  userId: string | null;
+  isAdmin: boolean;
+};
+
 export default function SessionsBrowser({
   sessions,
   seatsBySession,
@@ -98,18 +199,15 @@ export default function SessionsBrowser({
 
   const filtered = useMemo(() => {
     return sessions.filter((s) => {
-      // price/type filter
       if (priceFilter !== "all") {
         if (sessionType(s.price_cents) !== priceFilter) return false;
       }
 
-      // day filter (viewer local)
       if (dayFilter !== "any") {
         const dk = dayKeyFromLocal(s.starts_at);
         if (String(dk) !== dayFilter) return false;
       }
 
-      // time bucket filter (viewer local)
       if (timeFilter !== "any") {
         const mins = minutesFromLocalMidnight(s.starts_at);
         if (timeFilter === "late") {
@@ -139,90 +237,6 @@ export default function SessionsBrowser({
   }
 
   const listKey = `${priceFilter}|${dayFilter}|${timeFilter}`;
-
-  // Reusable controls block (used in mobile accordion + desktop bar)
-  function Controls({ compact }: { compact: boolean }) {
-    return (
-      <div className={compact ? "space-y-3" : "space-y-4"}>
-        {/* Type pills */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setPriceFilter("all")}
-            className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-              priceFilter === "all"
-                ? "bg-zinc-900 text-white border-zinc-900"
-                : "bg-white/90 text-zinc-900 border-zinc-300 hover:bg-white"
-            }`}
-          >
-            All
-          </button>
-          <button
-            type="button"
-            onClick={() => setPriceFilter("community")}
-            className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-              priceFilter === "community"
-                ? "bg-zinc-900 text-white border-zinc-900"
-                : "bg-white/90 text-zinc-900 border-zinc-300 hover:bg-white"
-            }`}
-          >
-            Community ($1)
-          </button>
-          <button
-            type="button"
-            onClick={() => setPriceFilter("pro")}
-            className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-              priceFilter === "pro"
-                ? "bg-zinc-900 text-white border-zinc-900"
-                : "bg-white/90 text-zinc-900 border-zinc-300 hover:bg-white"
-            }`}
-          >
-            Pro ($5)
-          </button>
-        </div>
-
-        {/* Day + time */}
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-white/90 px-3 py-2">
-            <span className="text-xs font-semibold text-zinc-600">Day</span>
-            <select
-              value={dayFilter}
-              onChange={(e) => setDayFilter(e.target.value)}
-              className="bg-transparent text-sm text-zinc-900 outline-none"
-            >
-              {DAY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-white/90 px-3 py-2">
-            <span className="text-xs font-semibold text-zinc-600">Time</span>
-            <select
-              value={timeFilter}
-              onChange={(e) => setTimeFilter(e.target.value as TimeBucket)}
-              className="bg-transparent text-sm text-zinc-900 outline-none"
-            >
-              {TIME_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        {/* Explainer */}
-        <div className="text-sm text-zinc-700">
-          <span className="font-semibold">Community:</span> $1 - for the people!
-          <span className="mx-2">•</span>
-          <span className="font-semibold">Pro:</span> $5 - Vetted moderators, for serious comics
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4">
@@ -270,7 +284,15 @@ export default function SessionsBrowser({
             </summary>
 
             <div className="px-4 pb-4">
-              <Controls compact={true} />
+              <FilterControls
+                compact={true}
+                priceFilter={priceFilter}
+                setPriceFilter={setPriceFilter}
+                dayFilter={dayFilter}
+                setDayFilter={setDayFilter}
+                timeFilter={timeFilter}
+                setTimeFilter={setTimeFilter}
+              />
             </div>
           </details>
         </div>
@@ -309,7 +331,15 @@ export default function SessionsBrowser({
               </div>
 
               <div className="mt-4">
-                <Controls compact={false} />
+                <FilterControls
+                  compact={false}
+                  priceFilter={priceFilter}
+                  setPriceFilter={setPriceFilter}
+                  dayFilter={dayFilter}
+                  setDayFilter={setDayFilter}
+                  timeFilter={timeFilter}
+                  setTimeFilter={setTimeFilter}
+                />
               </div>
             </div>
           </div>
@@ -385,7 +415,7 @@ export default function SessionsBrowser({
                     <span className="ml-2 text-zinc-500">• cap {totalCap}</span>
                   </div>
 
-                  {/* Hide the extra helper lines on mobile to reduce height */}
+                  {/* Hide extra helper lines on mobile */}
                   <div className="hidden sm:block">
                     {type !== "pro" && seats > 5 && (
                       <div className="mt-2 text-xs text-zinc-500">

@@ -2,25 +2,6 @@ import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import Link from "next/link";
 import SessionsBrowser from "@/components/SessionsBrowser";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Comedy Writing Room",
-  description:
-    "Daily virtual writing rooms for comics. Bring your material, workshop, and connect with other comedians around the world!",
-  openGraph: {
-    title: "Comedy Writing Room",
-    description:
-      "Daily virtual writing rooms for comics. Bring your material, workshop, and connect with other comedians around the world!",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Comedy Writing Room",
-    description:
-      "Daily virtual writing rooms for comics. Bring your material, workshop, and connect with other comedians around the world!",
-  },
-};
 
 type SessionRow = {
   id: string;
@@ -31,14 +12,6 @@ type SessionRow = {
   status: string;
   price_cents: number;
 };
-
-function formatUsd(cents: number) {
-  const safe = Number.isFinite(cents) ? cents : 0;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(safe / 100);
-}
 
 export default async function HomePage() {
   const { userId } = auth();
@@ -58,12 +31,17 @@ export default async function HomePage() {
   if (sessionsError) {
     return (
       <div className="mx-auto max-w-2xl space-y-6">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Comedy Writing Room
-        </h1>
-        <p className="text-sm text-zinc-600">
-          Something went wrong loading sessions.
-        </p>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Comedy Writing Room
+            </h1>
+            <p className="mt-1 text-sm text-zinc-600">
+              Something went wrong loading sessions.
+            </p>
+          </div>
+        </div>
+
         <pre className="rounded-2xl border border-zinc-200/70 bg-white/70 p-4 text-xs text-zinc-800 overflow-auto">
           {JSON.stringify(sessionsError, null, 2)}
         </pre>
@@ -74,14 +52,36 @@ export default async function HomePage() {
   const typedSessions = (sessions ?? []) as SessionRow[];
   const sessionIds = typedSessions.map((s) => s.id);
 
+  // Compute seats + whether current user has booked
   const seatsBySession: Record<string, number> = {};
   const joinedSessionIds: string[] = [];
 
   if (sessionIds.length > 0) {
-    const { data: bookings } = await supabaseAdmin
+    const { data: bookings, error: bookingsError } = await supabaseAdmin
       .from("bookings")
       .select("session_id,user_id")
       .in("session_id", sessionIds);
+
+    if (bookingsError) {
+      return (
+        <div className="mx-auto max-w-2xl space-y-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight">
+                Comedy Writing Room
+              </h1>
+              <p className="mt-1 text-sm text-zinc-600">
+                Something went wrong loading bookings.
+              </p>
+            </div>
+          </div>
+
+          <pre className="rounded-2xl border border-zinc-200/70 bg-white/70 p-4 text-xs text-zinc-800 overflow-auto">
+            {JSON.stringify(bookingsError, null, 2)}
+          </pre>
+        </div>
+      );
+    }
 
     const joinedSet = new Set<string>();
     for (const b of bookings ?? []) {
@@ -122,7 +122,22 @@ export default async function HomePage() {
         )}
       </div>
 
-      {/* Browser */}
+      {/* Beta note */}
+      <div className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-5 py-4 text-amber-950 shadow-sm">
+        <div className="flex items-start gap-3">
+          <span aria-hidden className="mt-0.5">
+            ⚠️
+          </span>
+          <p className="text-sm leading-relaxed">
+            <span className="font-semibold">Beta Mode — Friends of Rah:</span>{" "}
+            Please don&apos;t share this publicly yet. I&apos;m very excited,
+            but still working out the kinks (ayo)! Lmk directly if you have
+            feedback, questions, etc.
+          </p>
+        </div>
+      </div>
+
+      {/* Browser (filters + list) */}
       <SessionsBrowser
         sessions={typedSessions}
         seatsBySession={seatsBySession}
@@ -130,6 +145,21 @@ export default async function HomePage() {
         userId={userId ?? null}
         isAdmin={isAdmin}
       />
+
+      {/* Suggest a time */}
+      <div className="rounded-2xl border border-zinc-200/70 bg-white/70 px-6 py-6 text-center shadow-sm">
+        <p className="text-sm text-zinc-700">
+          No times work for you? Want to host or add a weekly session?
+        </p>
+        <a
+          href="https://docs.google.com/forms/d/e/1FAIpQLSddb6YHQoTvV11H_y85w4SYG_UhLCXhhJ9FPVF27zTkYJCDbQ/viewform?usp=header"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center mt-4 rounded-xl border border-zinc-300 bg-white/60 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition"
+        >
+          Suggest a time →
+        </a>
+      </div>
     </div>
   );
 }
