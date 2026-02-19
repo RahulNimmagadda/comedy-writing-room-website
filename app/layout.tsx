@@ -39,7 +39,7 @@ export default function RootLayout({
           </div>
 
           {/* Navigation */}
-          <header className="sticky top-0 z-50 border-b border-zinc-200/60 bg-[#fbfaf7]/80 backdrop-blur">
+          <header className="sticky top-0 z-50 border-b border-zinc-200/60 bg-[#fbfaf7]/90 backdrop-blur">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8 py-4">
               <Link href="/" className="text-sm font-semibold tracking-tight">
                 Comedy Writing Room
@@ -62,7 +62,7 @@ export default function RootLayout({
           </header>
 
           {/* Page content */}
-          <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12">
+          <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
             {children}
           </main>
 
@@ -87,7 +87,10 @@ export default function RootLayout({
                   <Link className="hover:text-zinc-700 transition" href="/about">
                     About
                   </Link>
-                  <Link className="hover:text-zinc-700 transition" href="/contact">
+                  <Link
+                    className="hover:text-zinc-700 transition"
+                    href="/contact"
+                  >
                     Contact
                   </Link>
                 </div>

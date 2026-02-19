@@ -94,6 +94,10 @@ function FilterControls({
   timeFilter,
   setTimeFilter,
 }: FilterControlsProps) {
+  const pillBase = "rounded-xl border px-3 py-2 text-sm font-semibold transition";
+  const pillOn = "bg-zinc-900 text-white border-zinc-900";
+  const pillOff = "bg-white/80 text-zinc-900 border-zinc-300 hover:bg-white";
+
   return (
     <div className={compact ? "space-y-3" : "space-y-4"}>
       {/* Type pills */}
@@ -101,21 +105,15 @@ function FilterControls({
         <button
           type="button"
           onClick={() => setPriceFilter("all")}
-          className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-            priceFilter === "all"
-              ? "bg-zinc-900 text-white border-zinc-900"
-              : "bg-white/90 text-zinc-900 border-zinc-300 hover:bg-white"
-          }`}
+          className={`${pillBase} ${priceFilter === "all" ? pillOn : pillOff}`}
         >
           All
         </button>
         <button
           type="button"
           onClick={() => setPriceFilter("community")}
-          className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-            priceFilter === "community"
-              ? "bg-zinc-900 text-white border-zinc-900"
-              : "bg-white/90 text-zinc-900 border-zinc-300 hover:bg-white"
+          className={`${pillBase} ${
+            priceFilter === "community" ? pillOn : pillOff
           }`}
         >
           Community ($1)
@@ -123,11 +121,7 @@ function FilterControls({
         <button
           type="button"
           onClick={() => setPriceFilter("pro")}
-          className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-            priceFilter === "pro"
-              ? "bg-zinc-900 text-white border-zinc-900"
-              : "bg-white/90 text-zinc-900 border-zinc-300 hover:bg-white"
-          }`}
+          className={`${pillBase} ${priceFilter === "pro" ? pillOn : pillOff}`}
         >
           Pro ($5)
         </button>
@@ -135,7 +129,7 @@ function FilterControls({
 
       {/* Day + time */}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-white/90 px-3 py-2">
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-white/80 px-3 py-2">
           <span className="text-xs font-semibold text-zinc-600">Day</span>
           <select
             value={dayFilter}
@@ -150,7 +144,7 @@ function FilterControls({
           </select>
         </label>
 
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-white/90 px-3 py-2">
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-white/80 px-3 py-2">
           <span className="text-xs font-semibold text-zinc-600">Time</span>
           <select
             value={timeFilter}
@@ -240,18 +234,18 @@ export default function SessionsBrowser({
 
   return (
     <div className="space-y-4">
-      {/* Sticky wrapper (works unless a parent has overflow hidden/auto) */}
+      {/* Sticky wrapper */}
       <div className="sticky top-3 z-20">
-        {/* MOBILE: compact accordion */}
-        <div className="sm:hidden rounded-2xl border border-zinc-300 bg-gradient-to-b from-zinc-200/70 to-white/80 shadow-md ring-1 ring-zinc-200/70 backdrop-blur">
+        {/* MOBILE: warm accordion */}
+        <div className="sm:hidden rounded-2xl border border-zinc-200/70 bg-white/70 shadow-sm ring-1 ring-zinc-200/60 backdrop-blur">
           <details className="group">
             <summary className="list-none cursor-pointer px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-xs uppercase tracking-wider text-zinc-600 font-bold">
-                    Filters
+                  <div className="text-xs uppercase tracking-wider text-zinc-700 font-bold">
+                    🔎 Filter sessions
                     {activeFiltersCount > 0 ? (
-                      <span className="ml-2 inline-flex items-center rounded-full border border-zinc-300 bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-zinc-700">
+                      <span className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-amber-50/70 px-2 py-0.5 text-[11px] font-semibold text-zinc-700">
                         {activeFiltersCount} active
                       </span>
                     ) : null}
@@ -269,7 +263,7 @@ export default function SessionsBrowser({
                         e.preventDefault();
                         clearFilters();
                       }}
-                      className="rounded-xl border border-zinc-300 bg-white/80 px-3 py-2 text-xs font-semibold text-zinc-900"
+                      className="rounded-xl border border-zinc-200 bg-white/80 px-3 py-2 text-xs font-semibold text-zinc-900 hover:bg-white transition"
                     >
                       Clear
                     </button>
@@ -297,15 +291,15 @@ export default function SessionsBrowser({
           </details>
         </div>
 
-        {/* DESKTOP: full control surface */}
-        <div className="hidden sm:block rounded-2xl border border-zinc-300 bg-gradient-to-b from-zinc-200/70 to-white/80 shadow-md ring-1 ring-zinc-200/70 backdrop-blur">
+        {/* DESKTOP: warm control surface */}
+        <div className="hidden sm:block rounded-2xl border border-zinc-200/70 bg-white/70 shadow-sm ring-1 ring-zinc-200/60 backdrop-blur">
           <div className="flex gap-4 px-5 py-4">
             <div className="w-1 rounded-full bg-amber-400" />
 
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-xs uppercase tracking-wider text-zinc-600 font-bold">
+                  <div className="text-xs uppercase tracking-wider text-zinc-700 font-bold">
                     🔎 Filter sessions
                   </div>
                   <div className="mt-0.5 text-sm text-zinc-600">
@@ -322,7 +316,7 @@ export default function SessionsBrowser({
                     <button
                       type="button"
                       onClick={clearFilters}
-                      className="shrink-0 rounded-xl border border-zinc-300 bg-white/80 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition"
+                      className="shrink-0 rounded-xl border border-zinc-200 bg-white/80 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition"
                     >
                       Clear filters
                     </button>
@@ -359,9 +353,7 @@ export default function SessionsBrowser({
           const canJoinNow = isJoinWindowOpen(s.starts_at, s.duration_minutes);
 
           const priceLabel =
-            Number.isFinite(s.price_cents) && s.price_cents > 0
-              ? formatUsd(s.price_cents)
-              : "";
+            Number.isFinite(s.price_cents) && s.price_cents > 0 ? formatUsd(s.price_cents) : "";
 
           const typeBadge =
             type === "pro" ? (
@@ -415,7 +407,7 @@ export default function SessionsBrowser({
                     <span className="ml-2 text-zinc-500">• cap {totalCap}</span>
                   </div>
 
-                  {/* Hide extra helper lines on mobile */}
+                  {/* Helper lines (desktop only) */}
                   <div className="hidden sm:block">
                     {type !== "pro" && seats > 5 && (
                       <div className="mt-2 text-xs text-zinc-500">
