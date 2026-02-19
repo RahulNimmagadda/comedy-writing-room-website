@@ -17,7 +17,7 @@ export const viewport = {
 const NAV_ITEMS = [
   { href: "/", label: "Home" },
   { href: "/how-it-works", label: "How It Works" },
-  { href: "/upcoming-improvements", label: "Upcoming" },
+  { href: "/upcoming-improvements", label: "Upcoming Improvements" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ] as const;
@@ -49,7 +49,9 @@ export default function RootLayout({
               <nav className="hidden items-center gap-1 md:flex">
                 <NavLink href="/">Home</NavLink>
                 <NavLink href="/how-it-works">How It Works</NavLink>
-                <NavLink href="/upcoming-improvements">Upcoming</NavLink>
+                <NavLink href="/upcoming-improvements">
+                  Upcoming Improvements
+                </NavLink>
                 <NavLink href="/about">About</NavLink>
                 <NavLink href="/contact">Contact</NavLink>
               </nav>
@@ -70,14 +72,17 @@ export default function RootLayout({
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>Comedy Writing Room</div>
                 <div className="flex items-center gap-4">
-                  <Link className="hover:text-zinc-700 transition" href="/how-it-works">
+                  <Link
+                    className="hover:text-zinc-700 transition"
+                    href="/how-it-works"
+                  >
                     How It Works
                   </Link>
                   <Link
                     className="hover:text-zinc-700 transition"
                     href="/upcoming-improvements"
                   >
-                    Upcoming
+                    Upcoming Improvements
                   </Link>
                   <Link className="hover:text-zinc-700 transition" href="/about">
                     About
