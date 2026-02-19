@@ -8,19 +8,18 @@ type Item = { href: string; label: string };
 
 export default function MobileNav({ items }: { items: Item[] }) {
   const pathname = usePathname();
-  const detailsRef = useRef<HTMLElement | null>(null);
+  const detailsRef = useRef<HTMLDetailsElement>(null);
 
   // Treat "/sessions" as "Home" since it redirects to "/"
   const normalized = pathname === "/sessions" ? "/" : pathname;
 
   // Close menu after route change
   useEffect(() => {
-    const el = detailsRef.current as HTMLDetailsElement | null;
-    if (el) el.open = false;
+    if (detailsRef.current) detailsRef.current.open = false;
   }, [pathname]);
 
   return (
-    <details ref={detailsRef as any} className="relative md:hidden">
+    <details ref={detailsRef} className="relative md:hidden">
       <summary className="cursor-pointer list-none rounded-xl border border-zinc-300 bg-white/60 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition">
         Menu
       </summary>
@@ -31,7 +30,8 @@ export default function MobileNav({ items }: { items: Item[] }) {
             const isActive =
               item.href === "/"
                 ? normalized === "/"
-                : normalized === item.href || normalized.startsWith(item.href + "/");
+                : normalized === item.href ||
+                  normalized.startsWith(item.href + "/");
 
             return (
               <Link
