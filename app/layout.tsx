@@ -2,6 +2,7 @@ import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import Link from "next/link";
 import NavLink from "@/components/NavLink";
+import MobileNav from "@/components/MobileNav";
 
 export const metadata = {
   title: "Comedy Writing Room",
@@ -12,6 +13,14 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
 };
+
+const NAV_ITEMS = [
+  { href: "/", label: "Home" },
+  { href: "/how-it-works", label: "How It Works" },
+  { href: "/upcoming-improvements", label: "Upcoming" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
+] as const;
 
 export default function RootLayout({
   children,
@@ -39,7 +48,6 @@ export default function RootLayout({
               {/* Desktop Nav */}
               <nav className="hidden items-center gap-1 md:flex">
                 <NavLink href="/">Home</NavLink>
-                <NavLink href="/sessions">Sessions</NavLink>
                 <NavLink href="/how-it-works">How It Works</NavLink>
                 <NavLink href="/upcoming-improvements">Upcoming</NavLink>
                 <NavLink href="/about">About</NavLink>
@@ -47,52 +55,7 @@ export default function RootLayout({
               </nav>
 
               {/* Mobile Nav */}
-              <details className="relative md:hidden">
-                <summary className="cursor-pointer list-none rounded-xl border border-zinc-300 bg-white/60 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition">
-                  Menu
-                </summary>
-
-                <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-zinc-200/70 bg-white/90 shadow-lg backdrop-blur">
-                  <div className="flex flex-col p-2 text-sm">
-                    <Link
-                      className="rounded-xl px-3 py-2 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 transition"
-                      href="/"
-                    >
-                      Home
-                    </Link>
-                    <Link
-                      className="rounded-xl px-3 py-2 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 transition"
-                      href="/sessions"
-                    >
-                      Sessions
-                    </Link>
-                    <Link
-                      className="rounded-xl px-3 py-2 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 transition"
-                      href="/how-it-works"
-                    >
-                      How It Works
-                    </Link>
-                    <Link
-                      className="rounded-xl px-3 py-2 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 transition"
-                      href="/upcoming-improvements"
-                    >
-                      Upcoming
-                    </Link>
-                    <Link
-                      className="rounded-xl px-3 py-2 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 transition"
-                      href="/about"
-                    >
-                      About
-                    </Link>
-                    <Link
-                      className="rounded-xl px-3 py-2 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 transition"
-                      href="/contact"
-                    >
-                      Contact
-                    </Link>
-                  </div>
-                </div>
-              </details>
+              <MobileNav items={[...NAV_ITEMS]} />
             </div>
           </header>
 
@@ -107,9 +70,6 @@ export default function RootLayout({
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>Comedy Writing Room</div>
                 <div className="flex items-center gap-4">
-                  <Link className="hover:text-zinc-700 transition" href="/sessions">
-                    Sessions
-                  </Link>
                   <Link className="hover:text-zinc-700 transition" href="/how-it-works">
                     How It Works
                   </Link>
@@ -118,6 +78,12 @@ export default function RootLayout({
                     href="/upcoming-improvements"
                   >
                     Upcoming
+                  </Link>
+                  <Link className="hover:text-zinc-700 transition" href="/about">
+                    About
+                  </Link>
+                  <Link className="hover:text-zinc-700 transition" href="/contact">
+                    Contact
                   </Link>
                 </div>
               </div>
