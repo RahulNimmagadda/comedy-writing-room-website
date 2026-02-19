@@ -30,7 +30,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className="min-h-screen bg-[#fbfaf7] text-zinc-900 antialiased">
+        <body className="min-h-screen bg-[#fbfaf7] text-zinc-900 antialiased dark:bg-[#fbfaf7] dark:text-zinc-900">
           {/* Beta banner */}
           <div className="border-b border-zinc-200/60 bg-amber-400/90">
             <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-2 text-center text-xs font-medium text-zinc-900">

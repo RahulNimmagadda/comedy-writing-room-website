@@ -24,7 +24,6 @@ function formatUsd(cents: number) {
   }).format(safe / 100);
 }
 
-// Treat <= $1.50 as Community, >= $4.50 as Pro
 function sessionType(priceCents: number) {
   if (!Number.isFinite(priceCents)) return "community";
   if (priceCents >= 450) return "pro";
@@ -33,7 +32,7 @@ function sessionType(priceCents: number) {
 
 function dayKeyFromLocal(utcIso: string) {
   const d = new Date(utcIso);
-  return d.getDay(); // 0=Sun ... 6=Sat
+  return d.getDay();
 }
 
 function minutesFromLocalMidnight(utcIso: string) {
@@ -94,43 +93,37 @@ function FilterControls({
   timeFilter,
   setTimeFilter,
 }: FilterControlsProps) {
-  const pillBase = "rounded-xl border px-3 py-2 text-sm font-semibold transition";
-  const pillOn = "bg-zinc-900 text-white border-zinc-900";
-  const pillOff = "bg-white/80 text-zinc-900 border-zinc-300 hover:bg-white";
-
   return (
     <div className={compact ? "space-y-3" : "space-y-4"}>
-      {/* Type pills */}
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setPriceFilter("all")}
-          className={`${pillBase} ${priceFilter === "all" ? pillOn : pillOff}`}
-        >
-          All
-        </button>
-        <button
-          type="button"
-          onClick={() => setPriceFilter("community")}
-          className={`${pillBase} ${
-            priceFilter === "community" ? pillOn : pillOff
-          }`}
-        >
-          Community ($1)
-        </button>
-        <button
-          type="button"
-          onClick={() => setPriceFilter("pro")}
-          className={`${pillBase} ${priceFilter === "pro" ? pillOn : pillOff}`}
-        >
-          Pro ($5)
-        </button>
+        {(
+          [
+            ["all", "All"],
+            ["community", "Community ($1)"],
+            ["pro", "Pro ($5)"],
+          ] as const
+        ).map(([key, label]) => {
+          const active = priceFilter === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setPriceFilter(key)}
+              className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                active
+                  ? "bg-zinc-900 text-white border-zinc-900"
+                  : "bg-white/80 text-zinc-900 border-zinc-300 hover:bg-white"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Day + time */}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-white/80 px-3 py-2">
-          <span className="text-xs font-semibold text-zinc-600">Day</span>
+          <span className="text-xs font-semibold text-zinc-700">Day</span>
           <select
             value={dayFilter}
             onChange={(e) => setDayFilter(e.target.value)}
@@ -145,7 +138,7 @@ function FilterControls({
         </label>
 
         <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-300 bg-white/80 px-3 py-2">
-          <span className="text-xs font-semibold text-zinc-600">Time</span>
+          <span className="text-xs font-semibold text-zinc-700">Time</span>
           <select
             value={timeFilter}
             onChange={(e) => setTimeFilter(e.target.value as TimeBucket)}
@@ -160,7 +153,6 @@ function FilterControls({
         </label>
       </div>
 
-      {/* Explainer */}
       <div className="text-sm text-zinc-700">
         <span className="font-semibold">Community:</span> $1 - for the people!
         <span className="mx-2">•</span>
@@ -236,21 +228,21 @@ export default function SessionsBrowser({
     <div className="space-y-4">
       {/* Sticky wrapper */}
       <div className="sticky top-3 z-20">
-        {/* MOBILE: warm accordion */}
-        <div className="sm:hidden rounded-2xl border border-zinc-200/70 bg-white/70 shadow-sm ring-1 ring-zinc-200/60 backdrop-blur">
+        {/* MOBILE: tinted filter card */}
+        <div className="sm:hidden rounded-2xl border border-amber-200/80 bg-amber-50/70 shadow-sm ring-1 ring-amber-200/60 backdrop-blur">
           <details className="group">
             <summary className="list-none cursor-pointer px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-xs uppercase tracking-wider text-zinc-700 font-bold">
+                  <div className="text-xs uppercase tracking-wider text-amber-950 font-bold">
                     🔎 Filter sessions
                     {activeFiltersCount > 0 ? (
-                      <span className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-amber-50/70 px-2 py-0.5 text-[11px] font-semibold text-zinc-700">
+                      <span className="ml-2 inline-flex items-center rounded-full border border-amber-200 bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-amber-950">
                         {activeFiltersCount} active
                       </span>
                     ) : null}
                   </div>
-                  <div className="mt-0.5 text-xs text-zinc-600">
+                  <div className="mt-0.5 text-xs text-amber-900/80">
                     Showing <span className="font-semibold">{filtered.length}</span>
                   </div>
                 </div>
@@ -263,13 +255,13 @@ export default function SessionsBrowser({
                         e.preventDefault();
                         clearFilters();
                       }}
-                      className="rounded-xl border border-zinc-200 bg-white/80 px-3 py-2 text-xs font-semibold text-zinc-900 hover:bg-white transition"
+                      className="rounded-xl border border-amber-200 bg-white/70 px-3 py-2 text-xs font-semibold text-amber-950 hover:bg-white transition"
                     >
                       Clear
                     </button>
                   )}
 
-                  <span className="text-xs font-semibold text-zinc-700">
+                  <span className="text-xs font-semibold text-amber-950">
                     <span className="group-open:hidden">Open ▾</span>
                     <span className="hidden group-open:inline">Close ▴</span>
                   </span>
@@ -291,24 +283,24 @@ export default function SessionsBrowser({
           </details>
         </div>
 
-        {/* DESKTOP: warm control surface */}
-        <div className="hidden sm:block rounded-2xl border border-zinc-200/70 bg-white/70 shadow-sm ring-1 ring-zinc-200/60 backdrop-blur">
+        {/* DESKTOP: tinted filter card */}
+        <div className="hidden sm:block rounded-2xl border border-amber-200/80 bg-amber-50/60 shadow-sm ring-1 ring-amber-200/60 backdrop-blur">
           <div className="flex gap-4 px-5 py-4">
             <div className="w-1 rounded-full bg-amber-400" />
 
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-xs uppercase tracking-wider text-zinc-700 font-bold">
+                  <div className="text-xs uppercase tracking-wider text-amber-950 font-bold">
                     🔎 Filter sessions
                   </div>
-                  <div className="mt-0.5 text-sm text-zinc-600">
+                  <div className="mt-0.5 text-sm text-amber-900/80">
                     Find the right room by type, day, or time.
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className="text-xs text-zinc-600">
+                  <div className="text-xs text-amber-900/80">
                     Showing <span className="font-semibold">{filtered.length}</span>
                   </div>
 
@@ -316,7 +308,7 @@ export default function SessionsBrowser({
                     <button
                       type="button"
                       onClick={clearFilters}
-                      className="shrink-0 rounded-xl border border-zinc-200 bg-white/80 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition"
+                      className="shrink-0 rounded-xl border border-amber-200 bg-white/70 px-3 py-2 text-sm font-semibold text-amber-950 hover:bg-white transition"
                     >
                       Clear filters
                     </button>
@@ -353,7 +345,9 @@ export default function SessionsBrowser({
           const canJoinNow = isJoinWindowOpen(s.starts_at, s.duration_minutes);
 
           const priceLabel =
-            Number.isFinite(s.price_cents) && s.price_cents > 0 ? formatUsd(s.price_cents) : "";
+            Number.isFinite(s.price_cents) && s.price_cents > 0
+              ? formatUsd(s.price_cents)
+              : "";
 
           const typeBadge =
             type === "pro" ? (
@@ -375,7 +369,7 @@ export default function SessionsBrowser({
                 {/* Left */}
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-xs sm:text-sm text-zinc-500">
+                    <div className="text-xs sm:text-sm text-zinc-600">
                       <LocalTime iso={s.starts_at} />
                     </div>
 
@@ -400,14 +394,13 @@ export default function SessionsBrowser({
                     {s.title}
                   </div>
 
-                  <div className="mt-2 text-sm text-zinc-600">
+                  <div className="mt-2 text-sm text-zinc-700">
                     <span className="font-semibold text-zinc-900">{seats}</span>{" "}
                     comics signed up
                     {isFull ? <span className="ml-2 text-zinc-500">(Full)</span> : null}
                     <span className="ml-2 text-zinc-500">• cap {totalCap}</span>
                   </div>
 
-                  {/* Helper lines (desktop only) */}
                   <div className="hidden sm:block">
                     {type !== "pro" && seats > 5 && (
                       <div className="mt-2 text-xs text-zinc-500">
