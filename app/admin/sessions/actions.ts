@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+const NYC_TZ = "America/New_York";
+
 function requireAdminOrRedirect() {
   const { userId } = auth();
   if (!userId) redirect("/");
@@ -18,162 +20,137 @@ function requireAdminOrRedirect() {
   return userId;
 }
 
-const NYC_TZ = "America/New_York";
+function parseIntSafe(v: FormDataEntryValue | null, fallback: number) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.trunc(n) : fallback;
+}
+
+function parseFloatSafe(v: FormDataEntryValue | null, fallback: number) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function dollarsToCents(dollars: number) {
+  const safe = Number.isFinite(dollars) ? dollars : 0;
+  return Math.max(0, Math.round(safe * 100));
+}
 
 /**
- * Returns timezone offset (in minutes) for a given UTC Date in the given IANA time zone.
- * Offset is: local_time = utc_time + offset
- * e.g. NYC in winter: offset = -300 (UTC-5)
+ * Convert NYC wall-time "YYYY-MM-DDTHH:mm" into UTC ISO string (DST-aware).
+ * No external deps; uses an iterative offset correction.
  */
-function getTimeZoneOffsetMinutes(dateUtc: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
+function nycLocalToUtcIso(local: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local);
+  if (!m) throw new Error("Invalid starts_at_local format.");
+
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const hour = Number(m[4]);
+  const minute = Number(m[5]);
+
+  // Intended NYC wall time in minutes (for diff calc)
+  const intendedMinutes = (((year * 12 + month) * 32 + day) * 24 + hour) * 60 + minute;
+
+  // Start with naive UTC guess
+  let utcMs = Date.UTC(year, month - 1, day, hour, minute, 0);
+
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: NYC_TZ,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
     hour12: false,
-  }).formatToParts(dateUtc);
+  });
 
-  const get = (type: string) =>
-    parts.find((p) => p.type === type)?.value ?? "00";
+  const getParts = (ms: number) => {
+    const parts = fmt.formatToParts(new Date(ms));
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+    const y = Number(get("year"));
+    const mo = Number(get("month"));
+    const d = Number(get("day"));
+    const h = Number(get("hour"));
+    const mi = Number(get("minute"));
+    return { y, mo, d, h, mi };
+  };
 
-  const y = Number(get("year"));
-  const m = Number(get("month"));
-  const d = Number(get("day"));
-  const hh = Number(get("hour"));
-  const mm = Number(get("minute"));
-  const ss = Number(get("second"));
+  // Iteratively correct for offset until formatted NYC wall time matches intended
+  for (let i = 0; i < 4; i++) {
+    const p = getParts(utcMs);
+    const gotMinutes = (((p.y * 12 + p.mo) * 32 + p.d) * 24 + p.h) * 60 + p.mi;
+    const delta = intendedMinutes - gotMinutes;
+    if (delta === 0) break;
+    utcMs += delta * 60_000;
+  }
 
-  // Interpret the "NYC wall clock parts" as if they were UTC.
-  // The difference between that and the true UTC instant is the offset.
-  const asIfUtcMs = Date.UTC(y, m - 1, d, hh, mm, ss);
-
-  // offset = local(as-utc) - actual(utc)
-  return (asIfUtcMs - dateUtc.getTime()) / 60000;
+  const d = new Date(utcMs);
+  if (Number.isNaN(d.getTime())) throw new Error("Invalid date/time.");
+  return d.toISOString();
 }
 
-/**
- * Input from <input type="datetime-local"> looks like "2026-02-15T12:30"
- * We treat that value as NYC time (America/New_York), regardless of where the admin is.
- * We store starts_at as a UTC ISO string.
- *
- * DST-aware and Node-safe (no Date parsing of locale strings).
- */
-function nycInputToIso(local: string) {
-  const [datePart, timePart] = local.split("T");
-  if (!datePart || !timePart) throw new Error("Invalid date/time.");
-
-  const [yyyyStr, mmStr, ddStr] = datePart.split("-");
-  const [hhStr, minStr] = timePart.split(":");
-
-  const yyyy = Number(yyyyStr);
-  const month = Number(mmStr);
-  const day = Number(ddStr);
-  const hour = Number(hhStr);
-  const minute = Number(minStr);
-
-  if (
-    !Number.isFinite(yyyy) ||
-    !Number.isFinite(month) ||
-    !Number.isFinite(day) ||
-    !Number.isFinite(hour) ||
-    !Number.isFinite(minute)
-  ) {
-    throw new Error("Invalid date/time.");
-  }
-
-  // Start with a naive UTC guess treating the local time as if it were UTC.
-  let utcMs = Date.UTC(yyyy, month - 1, day, hour, minute, 0);
-
-  // Iterate to account for DST boundaries (usually stabilizes in 1-2 passes).
-  for (let i = 0; i < 3; i++) {
-    const offsetMin = getTimeZoneOffsetMinutes(new Date(utcMs), NYC_TZ);
-    const corrected =
-      Date.UTC(yyyy, month - 1, day, hour, minute, 0) - offsetMin * 60000;
-    if (corrected === utcMs) break;
-    utcMs = corrected;
-  }
-
-  return new Date(utcMs).toISOString();
-}
-
-function parsePriceCents(formData: FormData) {
-  const raw = String(formData.get("price_dollars") ?? "").trim();
-  const dollars = Number(raw);
-
-  if (!Number.isFinite(dollars) || dollars < 0) {
-    throw new Error("Invalid price.");
-  }
-
-  // Avoid float weirdness by rounding to nearest cent.
-  return Math.round(dollars * 100);
-}
-
-async function resolveZoomLinkFromForm(formData: FormData) {
-  const zoom_room_number_raw = String(formData.get("zoom_room_number") ?? "")
-    .trim()
-    .replace(/\s+/g, "");
-
-  const zoom_link_manual = String(formData.get("zoom_link") ?? "").trim();
-
-  // If a room is selected, use its link (authoritative).
-  if (zoom_room_number_raw) {
-    const roomNumber = Number(zoom_room_number_raw);
-    if (!Number.isFinite(roomNumber)) throw new Error("Invalid zoom room.");
-
-    const { data, error } = await supabaseAdmin
-      .from("zoom_rooms")
-      .select("zoom_link")
-      .eq("room_number", roomNumber)
-      .single();
-
-    if (error) throw new Error(error.message);
-    if (!data?.zoom_link) throw new Error("Zoom room missing zoom_link.");
-
-    return data.zoom_link as string;
-  }
-
-  // Otherwise, allow manual link (or blank = null)
-  return zoom_link_manual || null;
+function addDaysUtcIso(utcIso: string, days: number) {
+  const d = new Date(utcIso);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString();
 }
 
 export async function createSession(formData: FormData) {
   requireAdminOrRedirect();
 
   const title = String(formData.get("title") ?? "").trim();
-  const starts_at_local = String(formData.get("starts_at_local") ?? "").trim();
-  const duration_minutes = Number(formData.get("duration_minutes"));
-  const seat_cap = Number(formData.get("seat_cap"));
+  const startsAtLocal = String(formData.get("starts_at_local") ?? "").trim();
+  const durationMinutes = parseIntSafe(formData.get("duration_minutes"), 60);
+  const seatCap = parseIntSafe(formData.get("seat_cap"), 5);
   const status = String(formData.get("status") ?? "scheduled").trim();
 
-  if (!title) throw new Error("Title required.");
-  if (!starts_at_local) throw new Error("Start time required.");
-  if (!Number.isFinite(duration_minutes) || duration_minutes <= 0)
-    throw new Error("Invalid duration.");
-  if (!Number.isFinite(seat_cap) || seat_cap <= 0)
-    throw new Error("Invalid seat cap.");
+  const priceDollars = parseFloatSafe(formData.get("price_dollars"), 0);
+  const priceCents = dollarsToCents(priceDollars);
 
-  const starts_at = nycInputToIso(starts_at_local);
-  const price_cents = parsePriceCents(formData);
-  const zoom_link = await resolveZoomLinkFromForm(formData);
+  const repeatWeeks = Math.max(0, parseIntSafe(formData.get("repeat_weeks"), 0));
 
-  const { error } = await supabaseAdmin.from("sessions").insert({
-    title,
-    starts_at,
-    duration_minutes,
-    seat_cap,
-    status,
-    price_cents,
-    zoom_link,
-  });
+  const zoomRoomNumberRaw = String(formData.get("zoom_room_number") ?? "").trim();
+  const zoomLinkOverrideRaw = String(formData.get("zoom_link") ?? "").trim();
 
+  let zoomLink: string | null = null;
+
+  if (zoomRoomNumberRaw) {
+    const roomNumber = Number(zoomRoomNumberRaw);
+    if (Number.isFinite(roomNumber)) {
+      const { data: room, error } = await supabaseAdmin
+        .from("zoom_rooms")
+        .select("zoom_link")
+        .eq("room_number", roomNumber)
+        .maybeSingle();
+
+      if (error) throw new Error(error.message);
+      if (room?.zoom_link) zoomLink = room.zoom_link;
+    }
+  } else if (zoomLinkOverrideRaw) {
+    zoomLink = zoomLinkOverrideRaw;
+  }
+
+  if (!title) throw new Error("Title is required.");
+  const startsAtUtcIso = nycLocalToUtcIso(startsAtLocal);
+
+  const rows = [];
+  for (let i = 0; i <= repeatWeeks; i++) {
+    rows.push({
+      title,
+      starts_at: addDaysUtcIso(startsAtUtcIso, i * 7),
+      duration_minutes: durationMinutes,
+      seat_cap: seatCap,
+      status,
+      zoom_link: zoomLink,
+      price_cents: priceCents,
+    });
+  }
+
+  const { error } = await supabaseAdmin.from("sessions").insert(rows);
   if (error) throw new Error(error.message);
 
   revalidatePath("/");
-  revalidatePath("/sessions");
   revalidatePath("/admin/sessions");
 }
 
@@ -182,40 +159,56 @@ export async function updateSession(formData: FormData) {
 
   const id = String(formData.get("id") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
-  const starts_at_local = String(formData.get("starts_at_local") ?? "").trim();
-  const duration_minutes = Number(formData.get("duration_minutes"));
-  const seat_cap = Number(formData.get("seat_cap"));
+  const startsAtLocal = String(formData.get("starts_at_local") ?? "").trim();
+  const durationMinutes = parseIntSafe(formData.get("duration_minutes"), 60);
+  const seatCap = parseIntSafe(formData.get("seat_cap"), 5);
   const status = String(formData.get("status") ?? "scheduled").trim();
 
-  if (!id) throw new Error("Missing session id.");
-  if (!title) throw new Error("Title required.");
-  if (!starts_at_local) throw new Error("Start time required.");
-  if (!Number.isFinite(duration_minutes) || duration_minutes <= 0)
-    throw new Error("Invalid duration.");
-  if (!Number.isFinite(seat_cap) || seat_cap <= 0)
-    throw new Error("Invalid seat cap.");
+  const priceDollars = parseFloatSafe(formData.get("price_dollars"), 0);
+  const priceCents = dollarsToCents(priceDollars);
 
-  const starts_at = nycInputToIso(starts_at_local);
-  const price_cents = parsePriceCents(formData);
-  const zoom_link = await resolveZoomLinkFromForm(formData);
+  const zoomRoomNumberRaw = String(formData.get("zoom_room_number") ?? "").trim();
+  const zoomLinkOverrideRaw = String(formData.get("zoom_link") ?? "").trim();
+
+  let zoomLink: string | null = null;
+
+  if (zoomRoomNumberRaw) {
+    const roomNumber = Number(zoomRoomNumberRaw);
+    if (Number.isFinite(roomNumber)) {
+      const { data: room, error } = await supabaseAdmin
+        .from("zoom_rooms")
+        .select("zoom_link")
+        .eq("room_number", roomNumber)
+        .maybeSingle();
+
+      if (error) throw new Error(error.message);
+      if (room?.zoom_link) zoomLink = room.zoom_link;
+    }
+  } else {
+    zoomLink = zoomLinkOverrideRaw ? zoomLinkOverrideRaw : null;
+  }
+
+  if (!id) throw new Error("Missing session id.");
+  if (!title) throw new Error("Title is required.");
+
+  const startsAtUtcIso = nycLocalToUtcIso(startsAtLocal);
 
   const { error } = await supabaseAdmin
     .from("sessions")
     .update({
       title,
-      starts_at,
-      duration_minutes,
-      seat_cap,
+      starts_at: startsAtUtcIso,
+      duration_minutes: durationMinutes,
+      seat_cap: seatCap,
       status,
-      price_cents,
-      zoom_link,
+      zoom_link: zoomLink,
+      price_cents: priceCents,
     })
     .eq("id", id);
 
   if (error) throw new Error(error.message);
 
   revalidatePath("/");
-  revalidatePath("/sessions");
   revalidatePath("/admin/sessions");
 }
 
@@ -229,6 +222,5 @@ export async function deleteSession(formData: FormData) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/");
-  revalidatePath("/sessions");
   revalidatePath("/admin/sessions");
 }

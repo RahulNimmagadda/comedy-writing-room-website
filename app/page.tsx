@@ -1,9 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { joinSession } from "./sessions/actions";
-import PayButton from "@/components/PayButton";
-import LocalTime from "@/components/LocalTime";
 import Link from "next/link";
+import SessionsBrowser from "@/components/SessionsBrowser";
 
 type SessionRow = {
   id: string;
@@ -21,17 +19,6 @@ function formatUsd(cents: number) {
     style: "currency",
     currency: "USD",
   }).format(safe / 100);
-}
-
-function isJoinWindowOpen(startsAtIso: string, durationMinutes: number) {
-  const start = new Date(startsAtIso).getTime();
-  const end = start + durationMinutes * 60_000;
-  const now = Date.now();
-
-  const openAt = start - 5 * 60_000;
-  const closeAt = end + 10 * 60_000;
-
-  return now >= openAt && now <= closeAt;
 }
 
 export default async function HomePage() {
@@ -87,8 +74,9 @@ export default async function HomePage() {
       ? `${formatUsd(minPriceCents)}`
       : `from ${formatUsd(minPriceCents)}`;
 
-  const seatsBySession = new Map<string, number>();
-  const joinedSet = new Set<string>();
+  // Compute seats + whether current user has booked
+  const seatsBySession: Record<string, number> = {};
+  const joinedSessionIds: string[] = [];
 
   if (sessionIds.length > 0) {
     const { data: bookings, error: bookingsError } = await supabaseAdmin
@@ -117,13 +105,12 @@ export default async function HomePage() {
       );
     }
 
+    const joinedSet = new Set<string>();
     for (const b of bookings ?? []) {
-      seatsBySession.set(
-        b.session_id,
-        (seatsBySession.get(b.session_id) ?? 0) + 1
-      );
+      seatsBySession[b.session_id] = (seatsBySession[b.session_id] ?? 0) + 1;
       if (userId && b.user_id === userId) joinedSet.add(b.session_id);
     }
+    joinedSessionIds.push(...Array.from(joinedSet));
   }
 
   return (
@@ -142,8 +129,15 @@ export default async function HomePage() {
           </h1>
 
           <p className="mt-2 text-sm text-zinc-600 leading-relaxed">
-            Structured, 60-minute writing rooms for comics. Reserve your seat
-            {priceSummary ? ` (${priceSummary})` : ""}.
+            Pick a session type:{" "}
+            <span className="font-semibold text-zinc-900">
+              Community ($1, unmoderated)
+            </span>{" "}
+            or{" "}
+            <span className="font-semibold text-zinc-900">
+              Pro ($5, moderated)
+            </span>
+            . Reserve your seat{priceSummary ? ` (${priceSummary})` : ""}.
           </p>
 
           <p className="mt-2 text-xs text-zinc-500">
@@ -177,147 +171,14 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* Sessions list */}
-      <div className="space-y-3">
-        {typedSessions.map((s) => {
-          const seats = seatsBySession.get(s.id) ?? 0;
-          const totalCap = s.seat_cap * 5;
-          const isFull = seats >= totalCap;
-
-          const alreadyJoined = userId ? joinedSet.has(s.id) : false;
-          const canJoinNow = isJoinWindowOpen(s.starts_at, s.duration_minutes);
-
-          const priceLabel =
-            Number.isFinite(s.price_cents) && s.price_cents > 0
-              ? formatUsd(s.price_cents)
-              : "";
-
-          return (
-            <div
-              key={s.id}
-              className="rounded-2xl border border-zinc-200/70 bg-white/70 px-6 py-5 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                {/* Left */}
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-sm text-zinc-500">
-                      <LocalTime iso={s.starts_at} />
-                    </div>
-
-                    {priceLabel ? (
-                      <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white/60 px-2 py-0.5 text-xs font-medium text-zinc-700">
-                        {priceLabel}
-                      </span>
-                    ) : null}
-
-                    <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white/60 px-2 py-0.5 text-xs font-medium text-zinc-700">
-                      {s.duration_minutes} min
-                    </span>
-
-                    <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white/60 px-2 py-0.5 text-xs font-medium text-zinc-700">
-                      {s.status}
-                    </span>
-                  </div>
-
-                  <div className="mt-2 text-lg font-semibold tracking-tight text-zinc-900 truncate">
-                    {s.title}
-                  </div>
-
-                  <div className="mt-2 text-sm text-zinc-600">
-                    <span className="font-semibold text-zinc-900">{seats}</span>{" "}
-                    comics signed up
-                    {isFull ? (
-                      <span className="ml-2 text-zinc-500">(Full)</span>
-                    ) : null}
-                  </div>
-
-                  {seats > 5 && (
-                    <div className="mt-2 text-xs text-zinc-500">
-                      Each room is capped at 5 people. Rooms split automatically
-                      as more comics join.
-                    </div>
-                  )}
-                </div>
-
-                {/* Right actions */}
-                <div className="shrink-0">
-                  {alreadyJoined ? (
-                    <div className="flex flex-col items-stretch gap-2 sm:items-end">
-                      <div className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white/60 px-3 py-2 text-sm font-semibold text-zinc-900">
-                        Reserved ✅
-                      </div>
-
-                      <Link
-                        href={`/sessions/${s.id}/join`}
-                        className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-zinc-900 shadow-sm transition ${
-                          canJoinNow
-                            ? "bg-amber-500 hover:bg-amber-400 active:bg-amber-500/90"
-                            : "bg-zinc-200/70 text-zinc-500 pointer-events-none"
-                        }`}
-                      >
-                        Join Room
-                      </Link>
-
-                      <div className="text-xs text-zinc-500">
-                        {canJoinNow
-                          ? "Room is open — join now"
-                          : "Opens 5 minutes before start"}
-                      </div>
-                    </div>
-                  ) : !userId ? (
-                    <Link
-                      href={`/sign-in?redirect_url=${encodeURIComponent("/")}`}
-                      className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-zinc-900 shadow-sm transition ${
-                        isFull
-                          ? "bg-zinc-200/70 text-zinc-500 pointer-events-none"
-                          : "bg-amber-500 hover:bg-amber-400 active:bg-amber-500/90"
-                      }`}
-                    >
-                      {isFull
-                        ? "Full"
-                        : `Sign in to reserve${
-                            s.price_cents > 0
-                              ? ` (${formatUsd(s.price_cents)})`
-                              : ""
-                          }`}
-                    </Link>
-                  ) : isAdmin ? (
-                    <form action={joinSession}>
-                      <input type="hidden" name="sessionId" value={s.id} />
-                      <button
-                        className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 disabled:opacity-40 transition"
-                        disabled={isFull}
-                      >
-                        {isFull ? "Full" : "Admin: Reserve Free"}
-                      </button>
-                    </form>
-                  ) : (
-                    <div className={isFull ? "opacity-60 pointer-events-none" : ""}>
-                      <PayButton
-                        sessionId={s.id}
-                        priceCents={s.price_cents}
-                        disabled={isFull}
-                      />
-                      {isFull && (
-                        <div className="mt-2 text-xs text-zinc-500 text-center">
-                          This session is full.
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-
-        {typedSessions.length === 0 && (
-          <div className="rounded-2xl border border-zinc-200/70 bg-white/60 p-6 text-sm text-zinc-600">
-            No upcoming sessions yet.
-          </div>
-        )}
-      </div>
+      {/* Browser (filters + list) */}
+      <SessionsBrowser
+        sessions={typedSessions}
+        seatsBySession={seatsBySession}
+        joinedSessionIds={joinedSessionIds}
+        userId={userId ?? null}
+        isAdmin={isAdmin}
+      />
 
       {/* Suggest a time */}
       <div className="rounded-2xl border border-zinc-200/70 bg-white/70 px-6 py-6 text-center shadow-sm">

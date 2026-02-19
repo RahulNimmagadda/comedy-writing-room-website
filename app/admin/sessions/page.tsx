@@ -117,7 +117,16 @@ export default async function AdminSessionsPage() {
 
       {/* Create */}
       <section className="border rounded bg-white p-4 space-y-3">
-        <div className="font-semibold">Create a session</div>
+        <div className="font-semibold">Create session(s)</div>
+
+        <div className="text-xs opacity-70 leading-relaxed">
+          <div>
+            <b>Community</b> suggestion: price <b>$1</b>, seat cap <b>5</b> (auto-splitting total cap = 25).
+          </div>
+          <div>
+            <b>Pro</b> suggestion: price <b>$5</b>, seat cap <b>5</b> (strict total cap = 5). Consider setting a single-room override.
+          </div>
+        </div>
 
         <form
           action={createSession}
@@ -163,8 +172,8 @@ export default async function AdminSessionsPage() {
             min={0}
             step="0.01"
             className="border rounded px-3 py-2 md:col-span-2"
-            placeholder="15.00"
-            defaultValue={0}
+            placeholder="1.00"
+            defaultValue={1}
             required
           />
 
@@ -177,6 +186,23 @@ export default async function AdminSessionsPage() {
             <option value="cancelled">cancelled</option>
             <option value="completed">completed</option>
           </select>
+
+          {/* NEW: recurrence */}
+          <div className="md:col-span-3">
+            <label className="text-xs opacity-70">
+              Repeat weekly (additional weeks)
+            </label>
+            <input
+              name="repeat_weeks"
+              type="number"
+              min={0}
+              className="border rounded px-3 py-2 w-full"
+              defaultValue={0}
+            />
+            <div className="text-[11px] opacity-60 mt-1">
+              0 = one-time. 7 = creates 8 sessions total (this week + next 7).
+            </div>
+          </div>
 
           <select
             name="zoom_room_number"
@@ -242,6 +268,9 @@ export default async function AdminSessionsPage() {
                     <div className="text-sm opacity-70">
                       <div className="font-mono text-xs opacity-70">
                         id: {s.id}
+                      </div>
+                      <div className="text-xs mt-1">
+                        Starts (NYC): <b>{utcIsoToNycDatetimeLocal(s.starts_at)}</b>
                       </div>
                       <div className="text-xs mt-1">
                         Zoom mode:{" "}
