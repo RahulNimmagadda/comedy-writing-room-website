@@ -3,13 +3,22 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { reminderEmailHtml, sendEmail } from "@/lib/email";
 
-function isAuthorized(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
+function getProvidedSecret(req: Request) {
+  const x = req.headers.get("x-cron-secret");
+  if (x) return x;
 
   const auth = req.headers.get("authorization") || "";
-  // Expect: Authorization: Bearer <CRON_SECRET>
-  return auth === `Bearer ${secret}`;
+  // Support: Authorization: Bearer <CRON_SECRET>
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  if (m?.[1]) return m[1];
+
+  return null;
+}
+
+function isAuthorized(req: Request) {
+  const expected = process.env.CRON_SECRET;
+  if (!expected) return false;
+  return getProvidedSecret(req) === expected;
 }
 
 type BookingRow = {
@@ -28,7 +37,7 @@ type SessionRow = {
   starts_at: string; // UTC ISO
 };
 
-export async function GET(req: Request) {
+async function handler(req: Request) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -36,7 +45,6 @@ export async function GET(req: Request) {
   const nowIso = new Date().toISOString();
 
   // Pull "due and unsent" bookings in two passes (24h + 1h).
-  // We keep the query simple and then fetch session details by ids.
   const due: Array<{ booking: BookingRow; label: "24h" | "1h" }> = [];
 
   const { data: due24h, error: e24 } = await supabaseAdmin
@@ -49,9 +57,7 @@ export async function GET(req: Request) {
     .lte("reminder_24h_at", nowIso)
     .limit(200);
 
-  if (e24) {
-    return NextResponse.json({ error: e24.message }, { status: 500 });
-  }
+  if (e24) return NextResponse.json({ error: e24.message }, { status: 500 });
 
   for (const b of (due24h ?? []) as BookingRow[]) {
     due.push({ booking: b, label: "24h" });
@@ -67,15 +73,12 @@ export async function GET(req: Request) {
     .lte("reminder_1h_at", nowIso)
     .limit(200);
 
-  if (e1) {
-    return NextResponse.json({ error: e1.message }, { status: 500 });
-  }
+  if (e1) return NextResponse.json({ error: e1.message }, { status: 500 });
 
   for (const b of (due1h ?? []) as BookingRow[]) {
     due.push({ booking: b, label: "1h" });
   }
 
-  // Nothing to do
   if (due.length === 0) {
     return NextResponse.json({ ok: true, sent: 0 });
   }
@@ -87,9 +90,7 @@ export async function GET(req: Request) {
     .select("id,title,starts_at")
     .in("id", sessionIds);
 
-  if (sErr) {
-    return NextResponse.json({ error: sErr.message }, { status: 500 });
-  }
+  if (sErr) return NextResponse.json({ error: sErr.message }, { status: 500 });
 
   const sessionById = new Map<string, SessionRow>();
   for (const s of (sessions ?? []) as SessionRow[]) sessionById.set(s.id, s);
@@ -99,7 +100,7 @@ export async function GET(req: Request) {
 
   for (const item of due) {
     const b = item.booking;
-    if (!b.user_email) continue; // can't send
+    if (!b.user_email) continue;
 
     const s = sessionById.get(b.session_id);
     if (!s) continue;
@@ -120,20 +121,17 @@ export async function GET(req: Request) {
         }),
       });
 
-      // Mark sent after successful send
       if (item.label === "24h") {
         const { error: upErr } = await supabaseAdmin
           .from("bookings")
           .update({ reminder_24h_sent: true })
           .eq("id", b.id);
-
         if (upErr) throw new Error(upErr.message);
       } else {
         const { error: upErr } = await supabaseAdmin
           .from("bookings")
           .update({ reminder_1h_sent: true })
           .eq("id", b.id);
-
         if (upErr) throw new Error(upErr.message);
       }
 
@@ -147,4 +145,12 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({ ok: true, sent: sentCount, failures });
+}
+
+export async function GET(req: Request) {
+  return handler(req);
+}
+
+export async function POST(req: Request) {
+  return handler(req);
 }

@@ -20,7 +20,18 @@ const isProtectedRoute = createRouteMatcher([
   "/api/admin/(.*)",
 ]);
 
+/**
+ * Always-public routes (never block)
+ * Keeps cron/webhooks clean and avoids Clerk token parsing weirdness.
+ */
+const isAlwaysPublicRoute = createRouteMatcher([
+  "/api/cron(.*)",
+  "/api/stripe/webhook(.*)",
+]);
+
 export default clerkMiddleware((auth, req) => {
+  if (isAlwaysPublicRoute(req)) return;
+
   if (isProtectedRoute(req)) {
     auth().protect();
   }
