@@ -8,17 +8,19 @@ function getProvidedSecret(req: Request) {
   if (x) return x;
 
   const auth = req.headers.get("authorization") || "";
-  // Support: Authorization: Bearer <CRON_SECRET>
   const m = auth.match(/^Bearer\s+(.+)$/i);
-  if (m?.[1]) return m[1];
-
-  return null;
+  return m?.[1] ?? null;
 }
 
 function isAuthorized(req: Request) {
   const expected = process.env.CRON_SECRET;
   if (!expected) return false;
   return getProvidedSecret(req) === expected;
+}
+
+function isValidEmail(email: string) {
+  // Simple, safe validation for provider APIs (avoid 422 spam)
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 type BookingRow = {
@@ -79,8 +81,9 @@ async function handler(req: Request) {
     due.push({ booking: b, label: "1h" });
   }
 
+  // Nothing to do
   if (due.length === 0) {
-    return NextResponse.json({ ok: true, sent: 0 });
+    return NextResponse.json({ ok: true, sent: 0, failures: [] });
   }
 
   const sessionIds = Array.from(new Set(due.map((x) => x.booking.session_id)));
@@ -100,7 +103,15 @@ async function handler(req: Request) {
 
   for (const item of due) {
     const b = item.booking;
-    if (!b.user_email) continue;
+
+    // ✅ Validate email before calling Resend
+    if (!b.user_email || !isValidEmail(b.user_email)) {
+      failures.push({
+        bookingId: b.id,
+        reason: `Invalid or missing user_email: ${String(b.user_email)}`,
+      });
+      continue;
+    }
 
     const s = sessionById.get(b.session_id);
     if (!s) continue;
@@ -121,6 +132,7 @@ async function handler(req: Request) {
         }),
       });
 
+      // Mark sent after successful send
       if (item.label === "24h") {
         const { error: upErr } = await supabaseAdmin
           .from("bookings")
