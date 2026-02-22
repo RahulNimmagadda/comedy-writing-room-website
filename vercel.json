@@ -1,0 +1,7 @@
+cat > vercel.json << 'EOF'
+{
+  "crons": [
+    { "path": "/api/cron/send-reminders", "schedule": "*/10 * * * *" }
+  ]
+}
+EOF 
