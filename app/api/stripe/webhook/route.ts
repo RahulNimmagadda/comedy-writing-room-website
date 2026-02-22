@@ -15,6 +15,7 @@ function getErrorMessage(err: unknown) {
   }
 }
 
+// Webhooks retry; these should be treated as success.
 function looksLikeDuplicateOrAlreadyJoined(message: string) {
   const m = message.toLowerCase();
   return (
@@ -25,6 +26,7 @@ function looksLikeDuplicateOrAlreadyJoined(message: string) {
   );
 }
 
+// These errors mean "can't fulfill booking" -> auto-refund.
 function looksLikeCapacityOrJoinWindowFailure(message: string) {
   const m = message.toLowerCase();
   return (
@@ -57,11 +59,27 @@ async function getClerkEmail(userId: string) {
   }
 }
 
+function getStripeCheckoutEmail(session: Stripe.Checkout.Session): string | null {
+  const cd = session.customer_details as { email?: string | null } | null;
+  const emailFromDetails = cd?.email ?? null;
+
+  // Some modes populate customer_email
+  const emailFromCustomerEmail =
+    (session as any)?.customer_email &&
+    typeof (session as any).customer_email === "string"
+      ? (session as any).customer_email
+      : null;
+
+  return emailFromDetails ?? emailFromCustomerEmail ?? null;
+}
+
 async function enrichBookingAndSendConfirmation(args: {
   clerkUserId: string;
   writingSessionId: string;
+  fallbackEmail?: string | null;
 }) {
-  const email = await getClerkEmail(args.clerkUserId);
+  const clerkEmail = await getClerkEmail(args.clerkUserId);
+  const email = clerkEmail ?? args.fallbackEmail ?? null;
 
   const { data: sessionRow, error: sErr } = await supabaseAdmin
     .from("sessions")
@@ -86,7 +104,7 @@ async function enrichBookingAndSendConfirmation(args: {
   await supabaseAdmin
     .from("bookings")
     .update({
-      user_email: email,
+      ...(email ? { user_email: email } : {}),
       reminder_24h_at: minusHours(sessionRow.starts_at, 24),
       reminder_1h_at: minusHours(sessionRow.starts_at, 1),
     })
@@ -145,12 +163,14 @@ export async function POST(req: Request) {
     );
   }
 
+  // Only handle checkout completion
   if (event.type !== "checkout.session.completed") {
     return NextResponse.json({ received: true, ignored: event.type });
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
 
+  // Only fulfill if actually paid
   if (session.payment_status !== "paid") {
     return NextResponse.json({
       received: true,
@@ -162,35 +182,50 @@ export async function POST(req: Request) {
   const writingSessionId = session.metadata?.writing_session_id;
 
   if (!clerkUserId || !writingSessionId) {
+    // Don't retry forever on permanently bad payloads
     return NextResponse.json({
       received: true,
       ignored: "missing_metadata",
     });
   }
 
+  const stripeEmail = getStripeCheckoutEmail(session);
+
+  // In payment mode, payment_intent should exist. Needed for refunds.
   const paymentIntentId =
     typeof session.payment_intent === "string" ? session.payment_intent : null;
 
+  // Try to fulfill booking via DB function (atomic)
   const { error } = await supabaseAdmin.rpc("join_session", {
     p_session_id: writingSessionId,
     p_user_id: clerkUserId,
   });
 
   if (!error) {
-    await enrichBookingAndSendConfirmation({ clerkUserId, writingSessionId });
+    await enrichBookingAndSendConfirmation({
+      clerkUserId,
+      writingSessionId,
+      fallbackEmail: stripeEmail,
+    });
     return NextResponse.json({ received: true, fulfilled: true });
   }
 
   const msg = String(error.message ?? "");
 
+  // Idempotency / retries: treat duplicate as success
   if (looksLikeDuplicateOrAlreadyJoined(msg)) {
-    // treat as success; still attempt to enrich + send confirmation once
-    await enrichBookingAndSendConfirmation({ clerkUserId, writingSessionId });
+    await enrichBookingAndSendConfirmation({
+      clerkUserId,
+      writingSessionId,
+      fallbackEmail: stripeEmail,
+    });
     return NextResponse.json({ received: true, deduped: true });
   }
 
+  // Capacity / timing issues: AUTO-REFUND, then return 200 so Stripe stops retrying
   if (looksLikeCapacityOrJoinWindowFailure(msg)) {
     if (!paymentIntentId) {
+      // Can't refund without payment intent; still return 200 to prevent retries.
       return NextResponse.json({
         received: true,
         refunded: false,
@@ -211,6 +246,7 @@ export async function POST(req: Request) {
             stripe_event_id: event.id,
           },
         },
+        // Idempotency key prevents double-refunds if Stripe retries this webhook
         { idempotencyKey: `refund_${event.id}` }
       );
 
@@ -220,6 +256,7 @@ export async function POST(req: Request) {
         join_error: msg,
       });
     } catch (refundErr: unknown) {
+      // If refund fails, return 500 so Stripe retries (we still want to try to refund)
       return NextResponse.json(
         { error: `Refund failed: ${getErrorMessage(refundErr)}`, join_error: msg },
         { status: 500 }
@@ -227,5 +264,6 @@ export async function POST(req: Request) {
     }
   }
 
+  // Unknown failure: return 500 to trigger retry
   return NextResponse.json({ error: msg }, { status: 500 });
 }
