@@ -17,6 +17,30 @@ function minusHours(iso: string, hours: number) {
   return new Date(ms).toISOString();
 }
 
+async function getBestEmailForAuthedUser(userId: string) {
+  // 1) Try session claims first (fast + no network)
+  const { sessionClaims } = auth();
+  const claimEmail =
+    (sessionClaims as any)?.email ??
+    (sessionClaims as any)?.primaryEmailAddress ??
+    (sessionClaims as any)?.primary_email ??
+    null;
+  if (typeof claimEmail === "string" && claimEmail.includes("@")) return claimEmail;
+
+  // 2) Fallback to Clerk API
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    return (
+      user.emailAddresses?.find((e) => e.id === user.primaryEmailAddressId)
+        ?.emailAddress ??
+      user.emailAddresses?.[0]?.emailAddress ??
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
 export async function joinSession(formData: FormData) {
   const { userId } = auth();
   if (!userId) throw new Error("Not signed in");
@@ -35,20 +59,10 @@ export async function joinSession(formData: FormData) {
     p_user_id: userId,
   });
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
-  // 2) Fetch Clerk email
-  let email: string | null = null;
-  try {
-    const user = await clerkClient.users.getUser(userId);
-    email = user.emailAddresses?.find(
-      (e) => e.id === user.primaryEmailAddressId
-    )?.emailAddress ?? user.emailAddresses?.[0]?.emailAddress ?? null;
-  } catch {
-    // ignore; booking can exist without email
-  }
+  // 2) Best email we can get (claims -> Clerk API)
+  const email = await getBestEmailForAuthedUser(userId);
 
   // 3) Fetch session details needed to compute reminder times + email content
   const { data: sessionRow, error: sErr } = await supabaseAdmin
@@ -58,7 +72,6 @@ export async function joinSession(formData: FormData) {
     .maybeSingle();
 
   if (sErr || !sessionRow) {
-    // still consider join successful; just can't enrich
     revalidatePath("/");
     return;
   }
@@ -81,17 +94,17 @@ export async function joinSession(formData: FormData) {
   const reminder24h = minusHours(sessionRow.starts_at, 24);
   const reminder1h = minusHours(sessionRow.starts_at, 1);
 
-  // 5) Update booking with computed fields
+  // 5) Update booking (only set email if we have one)
   await supabaseAdmin
     .from("bookings")
     .update({
-      user_email: email,
+      ...(email ? { user_email: email } : {}),
       reminder_24h_at: reminder24h,
       reminder_1h_at: reminder1h,
     })
     .eq("id", bookingRow.id);
 
-  // 6) Send confirmation (best-effort, avoid duplicates if already marked)
+  // 6) Send confirmation once
   if (email && !bookingRow.confirmation_sent) {
     try {
       await sendEmail({
@@ -108,7 +121,7 @@ export async function joinSession(formData: FormData) {
         .update({ confirmation_sent: true })
         .eq("id", bookingRow.id);
     } catch {
-      // leave confirmation_sent=false so we can try again later manually if needed
+      // leave confirmation_sent=false for later retry
     }
   }
 
