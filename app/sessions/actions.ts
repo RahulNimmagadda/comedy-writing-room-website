@@ -28,7 +28,11 @@ function extractEmailFromSessionClaims(sessionClaims: unknown): string | null {
 
   const claims = sessionClaims as SessionClaimsWithEmail;
 
-  const candidates = [claims.email, claims.primaryEmailAddress, claims.primary_email];
+  const candidates = [
+    claims.email,
+    claims.primaryEmailAddress,
+    claims.primary_email,
+  ];
 
   for (const c of candidates) {
     if (typeof c === "string" && c.includes("@")) return c;
@@ -57,89 +61,97 @@ async function getBestEmailForAuthedUser(userId: string) {
   }
 }
 
-export async function joinSession(formData: FormData) {
-  const { userId } = auth();
-  if (!userId) throw new Error("Not signed in");
+export type JoinSessionResult = { ok: true } | { ok: false; error: string };
 
-  // This action is intended to be "Admin: Sign Up Free"
-  if (!isAdminUser(userId)) {
-    throw new Error("Not authorized");
-  }
+export async function joinSession(formData: FormData): Promise<JoinSessionResult> {
+  try {
+    const { userId } = auth();
+    if (!userId) return { ok: false, error: "Not signed in" };
 
-  const sessionId = String(formData.get("sessionId") || "").trim();
-  if (!sessionId) throw new Error("Missing sessionId");
-
-  // 1) Join via DB function (atomic + race-safe)
-  const { error } = await supabaseAdmin.rpc("join_session", {
-    p_session_id: sessionId,
-    p_user_id: userId,
-  });
-
-  if (error) throw new Error(error.message);
-
-  // 2) Best email we can get (claims -> Clerk API)
-  const email = await getBestEmailForAuthedUser(userId);
-
-  // 3) Fetch session details needed to compute reminder times + email content
-  const { data: sessionRow, error: sErr } = await supabaseAdmin
-    .from("sessions")
-    .select("id,title,starts_at")
-    .eq("id", sessionId)
-    .maybeSingle();
-
-  if (sErr || !sessionRow) {
-    revalidatePath("/");
-    return;
-  }
-
-  // 4) Find booking row (assumes one booking per user per session; picks most recent)
-  const { data: bookingRow, error: bErr } = await supabaseAdmin
-    .from("bookings")
-    .select("id,confirmation_sent")
-    .eq("session_id", sessionId)
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (bErr || !bookingRow) {
-    revalidatePath("/");
-    return;
-  }
-
-  const reminder24h = minusHours(sessionRow.starts_at, 24);
-  const reminder1h = minusHours(sessionRow.starts_at, 1);
-
-  // 5) Update booking (only set email if we have one)
-  await supabaseAdmin
-    .from("bookings")
-    .update({
-      ...(email ? { user_email: email } : {}),
-      reminder_24h_at: reminder24h,
-      reminder_1h_at: reminder1h,
-    })
-    .eq("id", bookingRow.id);
-
-  // 6) Send confirmation once
-  if (email && !bookingRow.confirmation_sent) {
-    try {
-      await sendEmail({
-        to: email,
-        subject: `Confirmed: ${sessionRow.title}`,
-        html: confirmationEmailHtml({
-          sessionTitle: sessionRow.title,
-          startsAtIso: sessionRow.starts_at,
-        }),
-      });
-
-      await supabaseAdmin
-        .from("bookings")
-        .update({ confirmation_sent: true })
-        .eq("id", bookingRow.id);
-    } catch {
-      // leave confirmation_sent=false for later retry
+    // This action is intended to be "Admin: Sign Up Free"
+    if (!isAdminUser(userId)) {
+      return { ok: false, error: "Not authorized" };
     }
-  }
 
-  revalidatePath("/");
+    const sessionId = String(formData.get("sessionId") || "").trim();
+    if (!sessionId) return { ok: false, error: "Missing sessionId" };
+
+    // (Optional) Validate session exists so error messages are nicer
+    const { data: sessionRow, error: sErr } = await supabaseAdmin
+      .from("sessions")
+      .select("id,title,starts_at")
+      .eq("id", sessionId)
+      .maybeSingle();
+
+    if (sErr || !sessionRow) {
+      return { ok: false, error: "Session not found" };
+    }
+
+    // ✅ Admin is unrestricted: NO time gating here
+
+    // 1) Join via DB function (atomic + race-safe)
+    const { error } = await supabaseAdmin.rpc("join_session", {
+      p_session_id: sessionId,
+      p_user_id: userId,
+    });
+
+    if (error) return { ok: false, error: error.message };
+
+    // 2) Best email we can get (claims -> Clerk API)
+    const email = await getBestEmailForAuthedUser(userId);
+
+    // 3) Find booking row (assumes one booking per user per session; picks most recent)
+    const { data: bookingRow, error: bErr } = await supabaseAdmin
+      .from("bookings")
+      .select("id,confirmation_sent")
+      .eq("session_id", sessionId)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (bErr || !bookingRow) {
+      revalidatePath("/");
+      return { ok: true };
+    }
+
+    const reminder24h = minusHours(sessionRow.starts_at, 24);
+    const reminder1h = minusHours(sessionRow.starts_at, 1);
+
+    // 4) Update booking (only set email if we have one)
+    await supabaseAdmin
+      .from("bookings")
+      .update({
+        ...(email ? { user_email: email } : {}),
+        reminder_24h_at: reminder24h,
+        reminder_1h_at: reminder1h,
+      })
+      .eq("id", bookingRow.id);
+
+    // 5) Send confirmation once
+    if (email && !bookingRow.confirmation_sent) {
+      try {
+        await sendEmail({
+          to: email,
+          subject: `Confirmed: ${sessionRow.title}`,
+          html: confirmationEmailHtml({
+            sessionTitle: sessionRow.title,
+            startsAtIso: sessionRow.starts_at,
+          }),
+        });
+
+        await supabaseAdmin
+          .from("bookings")
+          .update({ confirmation_sent: true })
+          .eq("id", bookingRow.id);
+      } catch {
+        // leave confirmation_sent=false for later retry
+      }
+    }
+
+    revalidatePath("/");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Something went wrong" };
+  }
 }

@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import PayButton from "@/components/PayButton";
 import LocalTime from "@/components/LocalTime";
-import { joinSession } from "@/app/sessions/actions";
+import { joinSession, type JoinSessionResult } from "@/app/sessions/actions";
 
 type SessionRow = {
   id: string;
@@ -170,6 +170,31 @@ type Props = {
   isAdmin: boolean;
 };
 
+function AdminReserveButton({ sessionId, disabled }: { sessionId: string; disabled: boolean }) {
+  const [state, formAction, isPending] = useActionState<
+    JoinSessionResult,
+    FormData
+  >(async (_prev, formData) => joinSession(formData), { ok: true });
+
+  return (
+    <div className="flex flex-col items-stretch gap-2 sm:items-end">
+      <form action={formAction}>
+        <input type="hidden" name="sessionId" value={sessionId} />
+        <button
+          className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 disabled:opacity-40 transition"
+          disabled={disabled || isPending}
+        >
+          {disabled ? "Full" : isPending ? "Reserving…" : "Admin: Reserve Free"}
+        </button>
+      </form>
+
+      {!state.ok ? (
+        <div className="text-xs text-zinc-500">{state.error}</div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function SessionsBrowser({
   sessions,
   seatsBySession,
@@ -227,13 +252,11 @@ export default function SessionsBrowser({
   return (
     <div className="space-y-4">
       {/* Sticky wrapper */}
-      {/* Sticky wrapper */}
-<div className="sticky top-0 z-30 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
-  {/* Backdrop so the sticky control stays readable while scrolling */}
-  <div className="absolute inset-x-0 -top-[env(safe-area-inset-top)] bottom-0 bg-[#fbfaf7]/85 backdrop-blur" />
+      <div className="sticky top-0 z-30 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
+        <div className="absolute inset-x-0 -top-[env(safe-area-inset-top)] bottom-0 bg-[#fbfaf7]/85 backdrop-blur" />
 
-  {/* MOBILE: tinted filter card */}
-  <div className="relative sm:hidden rounded-2xl border border-amber-200/80 bg-amber-50/80 shadow-sm ring-1 ring-amber-200/60">
+        {/* MOBILE */}
+        <div className="relative sm:hidden rounded-2xl border border-amber-200/80 bg-amber-50/80 shadow-sm ring-1 ring-amber-200/60">
           <details className="group">
             <summary className="list-none cursor-pointer px-4 py-3">
               <div className="flex items-center justify-between gap-3">
@@ -287,7 +310,7 @@ export default function SessionsBrowser({
           </details>
         </div>
 
-        {/* DESKTOP: tinted filter card */}
+        {/* DESKTOP */}
         <div className="hidden sm:block rounded-2xl border border-amber-200/80 bg-amber-50/60 shadow-sm ring-1 ring-amber-200/60 backdrop-blur">
           <div className="flex gap-4 px-5 py-4">
             <div className="w-1 rounded-full bg-amber-400" />
@@ -458,15 +481,7 @@ export default function SessionsBrowser({
                           }`}
                     </Link>
                   ) : isAdmin ? (
-                    <form action={joinSession}>
-                      <input type="hidden" name="sessionId" value={s.id} />
-                      <button
-                        className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 disabled:opacity-40 transition"
-                        disabled={isFull}
-                      >
-                        {isFull ? "Full" : "Admin: Reserve Free"}
-                      </button>
-                    </form>
+                    <AdminReserveButton sessionId={s.id} disabled={isFull} />
                   ) : (
                     <div className={isFull ? "opacity-60 pointer-events-none" : ""}>
                       <PayButton sessionId={s.id} priceCents={s.price_cents} disabled={isFull} />

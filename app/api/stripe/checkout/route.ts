@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
     const { data: sessionRow, error: sessionErr } = await supabaseAdmin
       .from("sessions")
-      .select("id,title,price_cents,status")
+      .select("id,title,price_cents,status,starts_at")
       .eq("id", sessionId)
       .single();
 
@@ -48,6 +48,25 @@ export async function POST(req: Request) {
 
     if (!sessionRow) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+
+    // ✅ Allow paid signup until 5 minutes after start
+    const startsAtMs = new Date(sessionRow.starts_at).getTime();
+    if (!Number.isFinite(startsAtMs)) {
+      return NextResponse.json(
+        { error: "Invalid session start time." },
+        { status: 400 }
+      );
+    }
+
+    const LATE_JOIN_GRACE_MS = 5 * 60_000;
+    const latestAllowedPurchaseMs = startsAtMs + LATE_JOIN_GRACE_MS;
+
+    if (Date.now() > latestAllowedPurchaseMs) {
+      return NextResponse.json(
+        { error: "This session is no longer available." },
+        { status: 400 }
+      );
     }
 
     if (sessionRow.status !== "scheduled") {
@@ -77,7 +96,6 @@ export async function POST(req: Request) {
 
     const baseUrl = getBaseUrl(req);
 
-    // Optional redundancy: include Checkout Session ID so you can debug/verify on return
     const successUrl = `${baseUrl}/?signup=${encodeURIComponent(
       sessionId
     )}&paid=1&cs_id={CHECKOUT_SESSION_ID}`;
@@ -89,7 +107,6 @@ export async function POST(req: Request) {
       payment_method_types: ["card"],
       client_reference_id: `${userId}:${sessionId}`,
 
-      // 🔥 IMPORTANT: these keys MUST match what your webhook expects
       metadata: {
         clerk_user_id: userId,
         writing_session_id: sessionId,

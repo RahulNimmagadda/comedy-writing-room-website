@@ -137,6 +137,34 @@ async function enrichBookingAndSendConfirmation(args: {
   return { enriched: true };
 }
 
+async function refundPaymentIntent(args: {
+  paymentIntentId: string | null;
+  eventId: string;
+  clerkUserId: string;
+  writingSessionId: string;
+  reason: string;
+}) {
+  if (!args.paymentIntentId) {
+    return { refunded: false, reason: "no_payment_intent" as const };
+  }
+
+  await stripe.refunds.create(
+    {
+      payment_intent: args.paymentIntentId,
+      reason: "requested_by_customer",
+      metadata: {
+        clerk_user_id: args.clerkUserId,
+        writing_session_id: args.writingSessionId,
+        failure_reason: args.reason.slice(0, 450),
+        stripe_event_id: args.eventId,
+      },
+    },
+    { idempotencyKey: `refund_${args.eventId}` }
+  );
+
+  return { refunded: true as const };
+}
+
 export async function POST(req: Request) {
   const sig = req.headers.get("stripe-signature");
   if (!sig) {
@@ -198,6 +226,59 @@ export async function POST(req: Request) {
   const paymentIntentId =
     typeof session.payment_intent === "string" ? session.payment_intent : null;
 
+  // ✅ Enforce "paid users can join until 5 minutes after start"
+  const { data: timeRow, error: timeErr } = await supabaseAdmin
+    .from("sessions")
+    .select("starts_at")
+    .eq("id", writingSessionId)
+    .maybeSingle();
+
+  if (timeErr || !timeRow?.starts_at) {
+    // Can't validate timing; retry so we don't accidentally fulfill/refund incorrectly
+    return NextResponse.json(
+      { error: "Could not load session start time" },
+      { status: 500 }
+    );
+  }
+
+  const startsAtMs = new Date(timeRow.starts_at).getTime();
+  if (!Number.isFinite(startsAtMs)) {
+    return NextResponse.json(
+      { error: "Invalid session start time" },
+      { status: 500 }
+    );
+  }
+
+  const LATE_JOIN_GRACE_MS = 5 * 60_000;
+  const latestAllowedMs = startsAtMs + LATE_JOIN_GRACE_MS;
+
+  if (Date.now() > latestAllowedMs) {
+    // Too late: auto-refund and stop retries
+    try {
+      const refundRes = await refundPaymentIntent({
+        paymentIntentId,
+        eventId: event.id,
+        clerkUserId,
+        writingSessionId,
+        reason: "too_late_after_start",
+      });
+
+      revalidatePath("/");
+
+      return NextResponse.json({
+        received: true,
+        refunded: refundRes.refunded,
+        reason: "too_late_after_start",
+      });
+    } catch (refundErr: unknown) {
+      // If refund fails, return 500 so Stripe retries (we still want to try to refund)
+      return NextResponse.json(
+        { error: `Refund failed: ${getErrorMessage(refundErr)}` },
+        { status: 500 }
+      );
+    }
+  }
+
   // Try to fulfill booking via DB function (atomic)
   const { error } = await supabaseAdmin.rpc("join_session", {
     p_session_id: writingSessionId,
@@ -235,38 +316,20 @@ export async function POST(req: Request) {
 
   // Capacity / timing issues: AUTO-REFUND, then return 200 so Stripe stops retrying
   if (looksLikeCapacityOrJoinWindowFailure(msg)) {
-    if (!paymentIntentId) {
-      // Can't refund without payment intent; still return 200 to prevent retries.
-      return NextResponse.json({
-        received: true,
-        refunded: false,
-        reason: "no_payment_intent",
-        join_error: msg,
-      });
-    }
-
     try {
-      await stripe.refunds.create(
-        {
-          payment_intent: paymentIntentId,
-          reason: "requested_by_customer",
-          metadata: {
-            clerk_user_id: clerkUserId,
-            writing_session_id: writingSessionId,
-            failure_reason: msg.slice(0, 450),
-            stripe_event_id: event.id,
-          },
-        },
-        // Idempotency key prevents double-refunds if Stripe retries this webhook
-        { idempotencyKey: `refund_${event.id}` }
-      );
+      const refundRes = await refundPaymentIntent({
+        paymentIntentId,
+        eventId: event.id,
+        clerkUserId,
+        writingSessionId,
+        reason: msg,
+      });
 
-      // Even if refunded, revalidate in case booking state changed elsewhere
       revalidatePath("/");
 
       return NextResponse.json({
         received: true,
-        refunded: true,
+        refunded: refundRes.refunded,
         join_error: msg,
       });
     } catch (refundErr: unknown) {

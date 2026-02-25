@@ -25,9 +25,14 @@ export default async function HomePage() {
       .includes(userId) ??
       false);
 
+  // ✅ Show upcoming + sessions that started in the last 5 minutes (UTC window)
+  const now = Date.now();
+  const windowStartIso = new Date(now - 5 * 60_000).toISOString();
+
   const { data: sessions, error: sessionsError } = await supabaseAdmin
     .from("sessions")
     .select("id,title,starts_at,duration_minutes,seat_cap,status,price_cents")
+    .gte("starts_at", windowStartIso)
     .order("starts_at", { ascending: true });
 
   if (sessionsError) {
