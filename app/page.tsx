@@ -26,8 +26,9 @@ export default async function HomePage() {
       false);
 
   // ✅ Show upcoming + sessions that started in the last 5 minutes (UTC window)
-  const now = Date.now();
-  const windowStartIso = new Date(now - 5 * 60_000).toISOString();
+  const windowStartIso = new Date(
+    new Date().getTime() - 5 * 60_000
+  ).toISOString();
 
   const { data: sessions, error: sessionsError } = await supabaseAdmin
     .from("sessions")
