@@ -6,7 +6,6 @@ import { stripe } from "@/lib/stripe";
 type Body = { sessionId?: string };
 
 function getBaseUrl(req: Request) {
-  // Prefer explicit env var if you have it.
   const envUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.APP_URL ||
@@ -14,11 +13,9 @@ function getBaseUrl(req: Request) {
 
   if (envUrl) return envUrl.replace(/\/$/, "");
 
-  // Fallback: infer from request origin (works on Vercel too).
   const origin = req.headers.get("origin");
   if (origin) return origin.replace(/\/$/, "");
 
-  // Last resort for some edge cases
   const host = req.headers.get("host");
   const proto = req.headers.get("x-forwarded-proto") || "https";
   if (host) return `${proto}://${host}`.replace(/\/$/, "");
@@ -39,7 +36,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
     }
 
-    // Fetch price/title from DB (source of truth)
     const { data: sessionRow, error: sessionErr } = await supabaseAdmin
       .from("sessions")
       .select("id,title,price_cents,status")
@@ -80,19 +76,25 @@ export async function POST(req: Request) {
     }
 
     const baseUrl = getBaseUrl(req);
+
+    // Optional redundancy: include Checkout Session ID so you can debug/verify on return
     const successUrl = `${baseUrl}/?signup=${encodeURIComponent(
       sessionId
-    )}&paid=1`;
+    )}&paid=1&cs_id={CHECKOUT_SESSION_ID}`;
+
     const cancelUrl = `${baseUrl}/?signup=${encodeURIComponent(sessionId)}&c=1`;
 
     const checkout = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
       client_reference_id: `${userId}:${sessionId}`,
+
+      // 🔥 IMPORTANT: these keys MUST match what your webhook expects
       metadata: {
         clerk_user_id: userId,
-        session_id: sessionId,
+        writing_session_id: sessionId,
       },
+
       line_items: [
         {
           quantity: 1,
@@ -112,7 +114,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ url: checkout.url });
   } catch (e: unknown) {
     const message =
-      e instanceof Error ? e.message : typeof e === "string" ? e : "Unknown error";
+      e instanceof Error
+        ? e.message
+        : typeof e === "string"
+        ? e
+        : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

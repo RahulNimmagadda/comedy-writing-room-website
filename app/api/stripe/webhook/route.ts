@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -63,12 +64,14 @@ function getStripeCheckoutEmail(session: Stripe.Checkout.Session): string | null
   const cd = session.customer_details as { email?: string | null } | null;
   const emailFromDetails = cd?.email ?? null;
 
-  // Some modes populate customer_email
+  // Stripe type support varies by version; avoid `any` by widening with a safe type.
+  type SessionWithCustomerEmail = Stripe.Checkout.Session & {
+    customer_email?: string | null;
+  };
+
+  const customerEmail = (session as SessionWithCustomerEmail).customer_email;
   const emailFromCustomerEmail =
-    (session as any)?.customer_email &&
-    typeof (session as any).customer_email === "string"
-      ? (session as any).customer_email
-      : null;
+    typeof customerEmail === "string" ? customerEmail : null;
 
   return emailFromDetails ?? emailFromCustomerEmail ?? null;
 }
@@ -207,6 +210,10 @@ export async function POST(req: Request) {
       writingSessionId,
       fallbackEmail: stripeEmail,
     });
+
+    // Make homepage reflect new booking ASAP
+    revalidatePath("/");
+
     return NextResponse.json({ received: true, fulfilled: true });
   }
 
@@ -219,6 +226,10 @@ export async function POST(req: Request) {
       writingSessionId,
       fallbackEmail: stripeEmail,
     });
+
+    // Make homepage reflect booking ASAP
+    revalidatePath("/");
+
     return NextResponse.json({ received: true, deduped: true });
   }
 
@@ -249,6 +260,9 @@ export async function POST(req: Request) {
         // Idempotency key prevents double-refunds if Stripe retries this webhook
         { idempotencyKey: `refund_${event.id}` }
       );
+
+      // Even if refunded, revalidate in case booking state changed elsewhere
+      revalidatePath("/");
 
       return NextResponse.json({
         received: true,

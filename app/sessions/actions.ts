@@ -17,15 +17,31 @@ function minusHours(iso: string, hours: number) {
   return new Date(ms).toISOString();
 }
 
+type SessionClaimsWithEmail = {
+  email?: unknown;
+  primaryEmailAddress?: unknown;
+  primary_email?: unknown;
+};
+
+function extractEmailFromSessionClaims(sessionClaims: unknown): string | null {
+  if (!sessionClaims || typeof sessionClaims !== "object") return null;
+
+  const claims = sessionClaims as SessionClaimsWithEmail;
+
+  const candidates = [claims.email, claims.primaryEmailAddress, claims.primary_email];
+
+  for (const c of candidates) {
+    if (typeof c === "string" && c.includes("@")) return c;
+  }
+
+  return null;
+}
+
 async function getBestEmailForAuthedUser(userId: string) {
   // 1) Try session claims first (fast + no network)
   const { sessionClaims } = auth();
-  const claimEmail =
-    (sessionClaims as any)?.email ??
-    (sessionClaims as any)?.primaryEmailAddress ??
-    (sessionClaims as any)?.primary_email ??
-    null;
-  if (typeof claimEmail === "string" && claimEmail.includes("@")) return claimEmail;
+  const claimEmail = extractEmailFromSessionClaims(sessionClaims);
+  if (claimEmail) return claimEmail;
 
   // 2) Fallback to Clerk API
   try {
@@ -50,7 +66,7 @@ export async function joinSession(formData: FormData) {
     throw new Error("Not authorized");
   }
 
-  const sessionId = String(formData.get("sessionId") || "");
+  const sessionId = String(formData.get("sessionId") || "").trim();
   if (!sessionId) throw new Error("Missing sessionId");
 
   // 1) Join via DB function (atomic + race-safe)
