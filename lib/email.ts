@@ -54,24 +54,48 @@ export async function sendEmail({ to, subject, html, text }: SendEmailArgs) {
   return res.json().catch(() => ({}));
 }
 
-export function formatNYC(iso: string) {
+/**
+ * Format an ISO timestamp for a specific user timezone.
+ * - timezone should be an IANA zone like "America/Mexico_City"
+ * - if timezone is missing/invalid, we safely fall back to UTC
+ */
+export function formatInTimezone(iso: string, timezone?: string | null) {
   const d = new Date(iso);
-  // Use America/New_York (you can rename display later)
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(d);
+  const tz = timezone && typeof timezone === "string" && timezone.length > 0 ? timezone : "UTC";
+
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(d);
+  } catch {
+    // If timezone is invalid, fall back to UTC
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: "UTC",
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(d);
+  }
+}
+
+// Backward-compatible helper (kept because other code may import it)
+export function formatNYC(iso: string) {
+  return formatInTimezone(iso, "America/New_York");
 }
 
 export function confirmationEmailHtml(args: {
   sessionTitle: string;
   startsAtIso: string;
+  timezone?: string | null;
 }) {
-  const whenNYC = formatNYC(args.startsAtIso);
+  const whenLocal = formatInTimezone(args.startsAtIso, args.timezone);
   const url = siteUrl();
 
   return `
@@ -81,7 +105,7 @@ export function confirmationEmailHtml(args: {
       You’re signed up for <strong>${escapeHtml(args.sessionTitle)}</strong>.
     </p>
     <p style="margin:0 0 16px 0;">
-      <strong>When (NYC time):</strong> ${escapeHtml(whenNYC)}
+      <strong>When:</strong> ${escapeHtml(whenLocal)}
     </p>
     <p style="margin:0 0 16px 0;">
       Join from the site when the button opens (5 minutes before start):
@@ -92,7 +116,7 @@ export function confirmationEmailHtml(args: {
       </a>
     </p>
     <p style="margin:0; color:#6b7280; font-size:12px;">
-      Tip: this email shows NYC time. Your device may display the session in your local time on the website.
+      Tip: join opens 5 minutes before start.
     </p>
   </div>
   `;
@@ -102,11 +126,13 @@ export function reminderEmailHtml(args: {
   sessionTitle: string;
   startsAtIso: string;
   label: "24h" | "1h";
+  timezone?: string | null;
 }) {
-  const whenNYC = formatNYC(args.startsAtIso);
+  const whenLocal = formatInTimezone(args.startsAtIso, args.timezone);
   const url = siteUrl();
 
-  const headline = args.label === "24h" ? "Reminder ⏰ Tomorrow" : "Reminder ⏰ Starting soon";
+  const headline =
+    args.label === "24h" ? "Reminder ⏰ Tomorrow" : "Reminder ⏰ Starting soon";
 
   return `
   <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height: 1.5;">
@@ -115,7 +141,7 @@ export function reminderEmailHtml(args: {
       <strong>${escapeHtml(args.sessionTitle)}</strong>
     </p>
     <p style="margin:0 0 16px 0;">
-      <strong>When (NYC time):</strong> ${escapeHtml(whenNYC)}
+      <strong>When:</strong> ${escapeHtml(whenLocal)}
     </p>
     <p style="margin:0 0 20px 0;">
       <a href="${url}" style="display:inline-block; padding:10px 14px; border-radius:10px; background:#111827; color:#fff; text-decoration:none;">

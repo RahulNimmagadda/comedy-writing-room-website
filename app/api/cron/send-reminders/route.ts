@@ -19,7 +19,6 @@ function isAuthorized(req: Request) {
 }
 
 function isValidEmail(email: string) {
-  // Simple, safe validation for provider APIs (avoid 422 spam)
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
@@ -27,6 +26,7 @@ type BookingRow = {
   id: string;
   session_id: string;
   user_email: string | null;
+  timezone: string | null;
   reminder_24h_at: string | null;
   reminder_24h_sent: boolean;
   reminder_1h_at: string | null;
@@ -52,15 +52,14 @@ async function handler(req: Request) {
   const now = new Date();
   const nowIso = now.toISOString();
 
-  // 1) Pull "due and unsent" bookings in two passes (24h + 1h).
-  // We'll dedupe later (1h wins over 24h for the same booking).
   const due: DueItem[] = [];
+
+  const selectCols =
+    "id,session_id,user_email,timezone,reminder_24h_at,reminder_24h_sent,reminder_1h_at,reminder_1h_sent";
 
   const { data: due24h, error: e24 } = await supabaseAdmin
     .from("bookings")
-    .select(
-      "id,session_id,user_email,reminder_24h_at,reminder_24h_sent,reminder_1h_at,reminder_1h_sent"
-    )
+    .select(selectCols)
     .eq("reminder_24h_sent", false)
     .not("reminder_24h_at", "is", null)
     .lte("reminder_24h_at", nowIso)
@@ -74,9 +73,7 @@ async function handler(req: Request) {
 
   const { data: due1h, error: e1 } = await supabaseAdmin
     .from("bookings")
-    .select(
-      "id,session_id,user_email,reminder_24h_at,reminder_24h_sent,reminder_1h_at,reminder_1h_sent"
-    )
+    .select(selectCols)
     .eq("reminder_1h_sent", false)
     .not("reminder_1h_at", "is", null)
     .lte("reminder_1h_at", nowIso)
@@ -99,7 +96,7 @@ async function handler(req: Request) {
     });
   }
 
-  // 2) Dedupe: if both labels are due for the same booking, send 1h only.
+  // Dedupe by booking: if both due, send 1h only
   const byBookingId = new Map<string, DueItem>();
   for (const item of due) {
     const existing = byBookingId.get(item.booking.id);
@@ -107,15 +104,16 @@ async function handler(req: Request) {
       byBookingId.set(item.booking.id, item);
       continue;
     }
-    // Prefer 1h over 24h
     if (existing.label === "24h" && item.label === "1h") {
       byBookingId.set(item.booking.id, item);
     }
   }
+
   const deduped = Array.from(byBookingId.values());
 
-  // 3) Fetch sessions
-  const sessionIds = Array.from(new Set(deduped.map((x) => x.booking.session_id)));
+  const sessionIds = Array.from(
+    new Set(deduped.map((x) => x.booking.session_id))
+  );
 
   const { data: sessions, error: sErr } = await supabaseAdmin
     .from("sessions")
@@ -130,7 +128,6 @@ async function handler(req: Request) {
   let sentCount = 0;
   let skippedLate = 0;
   let invalidEmail = 0;
-
   const failures: Array<{ bookingId: string; reason: string }> = [];
 
   for (const item of deduped) {
@@ -138,14 +135,12 @@ async function handler(req: Request) {
     const s = sessionById.get(b.session_id);
     if (!s) continue;
 
-    const startsAt = new Date(s.starts_at).getTime();
+    const startsAtMs = new Date(s.starts_at).getTime();
     const nowMs = now.getTime();
 
-    // ✅ HARD GUARD: never send reminders for sessions that already started
-    if (startsAt <= nowMs) {
+    // Never send if session already started; mark as sent so it won't retry
+    if (startsAtMs <= nowMs) {
       skippedLate += 1;
-
-      // Mark this reminder as "sent" so it doesn't retry tomorrow forever
       try {
         if (item.label === "24h") {
           const { error: upErr } = await supabaseAdmin
@@ -168,11 +163,9 @@ async function handler(req: Request) {
             (err instanceof Error ? err.message : String(err)),
         });
       }
-
       continue;
     }
 
-    // ✅ Validate email before calling provider
     if (!b.user_email || !isValidEmail(b.user_email)) {
       invalidEmail += 1;
       failures.push({
@@ -195,10 +188,10 @@ async function handler(req: Request) {
           sessionTitle: s.title,
           startsAtIso: s.starts_at,
           label: item.label,
+          timezone: b.timezone,
         }),
       });
 
-      // Mark sent after successful send
       if (item.label === "24h") {
         const { error: upErr } = await supabaseAdmin
           .from("bookings")
