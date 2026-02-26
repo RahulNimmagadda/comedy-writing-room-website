@@ -15,7 +15,7 @@ function isJoinWindowOpen(startsAtIso: string, durationMinutes: number) {
   return now >= openAt && now <= closeAt;
 }
 
-export default async function SessionJoinPage({
+export default async function SessionPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -43,17 +43,13 @@ export default async function SessionJoinPage({
     );
   }
 
-  const canJoinNow = isJoinWindowOpen(
-    session.starts_at,
-    session.duration_minutes
-  );
+  const canJoinNow = isJoinWindowOpen(session.starts_at, session.duration_minutes);
   if (!canJoinNow) {
     return (
       <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
         <h1 className="text-2xl font-bold">Room not open yet</h1>
         <p className="opacity-70">
-          Rooms open 5 minutes before start and close 10 minutes after the
-          session ends.
+          Rooms open 5 minutes before start and close 10 minutes after the session ends.
         </p>
         <Link className="underline" href="/">
           Back to sessions
@@ -65,7 +61,7 @@ export default async function SessionJoinPage({
   // Ensure user is booked
   const { data: booking, error: bookingErr } = await supabaseAdmin
     .from("bookings")
-    .select("id, timezone")
+    .select("id")
     .eq("session_id", sessionId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -88,9 +84,7 @@ export default async function SessionJoinPage({
     return (
       <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
         <h1 className="text-2xl font-bold">You’re not signed up</h1>
-        <p className="opacity-70">
-          Please sign up for this session before joining the room.
-        </p>
+        <p className="opacity-70">Please sign up for this session before joining the room.</p>
         <Link className="underline" href="/">
           Back to sessions
         </Link>
@@ -98,65 +92,67 @@ export default async function SessionJoinPage({
     );
   }
 
-  /**
-   * We capture timezone on the client and POST it back to this same route.
-   * Then we update the booking timezone and redirect the user into the room.
-   */
   async function joinNow(formData: FormData) {
     "use server";
 
+    const { userId } = auth();
+    if (!userId) redirect("/sign-in");
+
     const tz = String(formData.get("timezone") || "").trim();
+
+    // Re-fetch booking inside the action (fixes TS: booking possibly null)
+    const { data: b } = await supabaseAdmin
+      .from("bookings")
+      .select("id")
+      .eq("session_id", sessionId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!b) {
+      redirect(`/sessions/${sessionId}`);
+    }
+
     if (tz) {
-      // Best-effort: store timezone for future emails
-      await supabaseAdmin
-        .from("bookings")
-        .update({ timezone: tz })
-        .eq("id", booking.id);
+      await supabaseAdmin.from("bookings").update({ timezone: tz }).eq("id", b.id);
     }
 
-    // ✅ NEW: If the session has a zoom_link override, use it (single-room mode)
-    if (session.zoom_link && session.zoom_link.trim().length > 0) {
-      redirect(session.zoom_link.trim());
+    // Re-fetch session inside action to avoid relying on outer closure state
+    const { data: s } = await supabaseAdmin
+      .from("sessions")
+      .select("id, zoom_link")
+      .eq("id", sessionId)
+      .maybeSingle();
+
+    if (s?.zoom_link && s.zoom_link.trim().length > 0) {
+      redirect(s.zoom_link.trim());
     }
 
-    // Otherwise keep existing multi-room split behavior
     const { data: roomNumber, error: roomErr } = await supabaseAdmin.rpc(
       "get_room_for_user",
-      {
-        p_session_id: sessionId,
-        p_user_id: userId,
-      }
+      { p_session_id: sessionId, p_user_id: userId }
     );
 
     if (roomErr || !roomNumber) {
-      // If room assignment fails, bounce back with a readable error
-      redirect(`/sessions/${sessionId}/join?error=room_assignment_failed`);
+      redirect(`/sessions/${sessionId}`);
     }
 
-    const { data: zoom, error: zoomErr } = await supabaseAdmin
+    const { data: zoom } = await supabaseAdmin
       .from("zoom_rooms")
-      .select("zoom_link, room_label")
+      .select("zoom_link")
       .eq("room_number", roomNumber)
-      .single();
+      .maybeSingle();
 
-    if (zoomErr || !zoom?.zoom_link) {
-      redirect(`/sessions/${sessionId}/join?error=zoom_not_configured`);
+    if (!zoom?.zoom_link) {
+      redirect(`/sessions/${sessionId}`);
     }
 
     redirect(zoom.zoom_link);
   }
 
-  // If there is an error query param, show a nicer message
-  // (we keep it lightweight; your existing error blocks are still fine)
-  // Note: Next app router doesn't give searchParams here unless included;
-  // so we won't overcomplicate.
-
   return (
     <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-4">
-      <h1 className="text-2xl font-bold">Join room</h1>
-      <p className="opacity-70">
-        You’re signed up. Click below to enter your Zoom room.
-      </p>
+      <h1 className="text-2xl font-bold">{session.title}</h1>
+      <p className="opacity-70">Click below to join your room.</p>
 
       <form action={joinNow} className="space-y-3">
         <TimezoneField />
