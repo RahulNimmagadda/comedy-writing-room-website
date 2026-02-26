@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
 import PayButton from "@/components/PayButton";
 import LocalTime from "@/components/LocalTime";
+import TimezoneField from "@/components/TimezoneField";
 import { joinSession, type JoinSessionResult } from "@/app/sessions/actions";
 
 type SessionRow = {
@@ -63,14 +64,17 @@ const DAY_OPTIONS: { label: string; value: string }[] = [
 ];
 
 type TimeBucket = "any" | "morning" | "afternoon" | "evening" | "late";
-const TIME_OPTIONS: { label: string; value: TimeBucket; range: [number, number] }[] =
-  [
-    { label: "Any time", value: "any", range: [0, 24 * 60] },
-    { label: "Morning (5a–12p)", value: "morning", range: [5 * 60, 12 * 60] },
-    { label: "Afternoon (12p–5p)", value: "afternoon", range: [12 * 60, 17 * 60] },
-    { label: "Evening (5p–10p)", value: "evening", range: [17 * 60, 22 * 60] },
-    { label: "Late (10p–5a)", value: "late", range: [22 * 60, 5 * 60] },
-  ];
+const TIME_OPTIONS: {
+  label: string;
+  value: TimeBucket;
+  range: [number, number];
+}[] = [
+  { label: "Any time", value: "any", range: [0, 24 * 60] },
+  { label: "Morning (5a–12p)", value: "morning", range: [5 * 60, 12 * 60] },
+  { label: "Afternoon (12p–5p)", value: "afternoon", range: [12 * 60, 17 * 60] },
+  { label: "Evening (5p–10p)", value: "evening", range: [17 * 60, 22 * 60] },
+  { label: "Late (10p–5a)", value: "late", range: [22 * 60, 5 * 60] },
+];
 
 type PriceFilter = "all" | "community" | "pro";
 
@@ -171,15 +175,16 @@ type Props = {
 };
 
 function AdminReserveButton({ sessionId, disabled }: { sessionId: string; disabled: boolean }) {
-  const [state, formAction, isPending] = useActionState<
-    JoinSessionResult,
-    FormData
-  >(async (_prev, formData) => joinSession(formData), { ok: true });
+  const [state, formAction, isPending] = useActionState<JoinSessionResult, FormData>(
+    async (_prev, formData) => joinSession(formData),
+    { ok: true }
+  );
 
   return (
     <div className="flex flex-col items-stretch gap-2 sm:items-end">
       <form action={formAction}>
         <input type="hidden" name="sessionId" value={sessionId} />
+        <TimezoneField />
         <button
           className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 disabled:opacity-40 transition"
           disabled={disabled || isPending}
@@ -188,9 +193,7 @@ function AdminReserveButton({ sessionId, disabled }: { sessionId: string; disabl
         </button>
       </form>
 
-      {!state.ok ? (
-        <div className="text-xs text-zinc-500">{state.error}</div>
-      ) : null}
+      {!state.ok ? <div className="text-xs text-zinc-500">{state.error}</div> : null}
     </div>
   );
 }
