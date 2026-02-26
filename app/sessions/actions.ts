@@ -63,7 +63,9 @@ async function getBestEmailForAuthedUser(userId: string) {
 
 export type JoinSessionResult = { ok: true } | { ok: false; error: string };
 
-export async function joinSession(formData: FormData): Promise<JoinSessionResult> {
+export async function joinSession(
+  formData: FormData
+): Promise<JoinSessionResult> {
   try {
     const { userId } = auth();
     if (!userId) return { ok: false, error: "Not signed in" };
@@ -76,7 +78,7 @@ export async function joinSession(formData: FormData): Promise<JoinSessionResult
     const sessionId = String(formData.get("sessionId") || "").trim();
     if (!sessionId) return { ok: false, error: "Missing sessionId" };
 
-    // (Optional) Validate session exists so error messages are nicer
+    // Validate session exists
     const { data: sessionRow, error: sErr } = await supabaseAdmin
       .from("sessions")
       .select("id,title,starts_at")
@@ -115,16 +117,41 @@ export async function joinSession(formData: FormData): Promise<JoinSessionResult
       return { ok: true };
     }
 
-    const reminder24h = minusHours(sessionRow.starts_at, 24);
-    const reminder1h = minusHours(sessionRow.starts_at, 1);
+    // ---- Reminder scheduling guardrails ----
+    const nowMs = Date.now();
+    const startsAtMs = new Date(sessionRow.starts_at).getTime();
+
+    // If session already started, do NOT create reminders that are immediately due.
+    // Also mark reminders as sent so daily/late cron runs never spam.
+    const hasStarted = startsAtMs <= nowMs;
+
+    let reminder24hAt: string | null = null;
+    let reminder1hAt: string | null = null;
+
+    if (!hasStarted) {
+      const r24 = minusHours(sessionRow.starts_at, 24);
+      const r1 = minusHours(sessionRow.starts_at, 1);
+
+      const r24Ms = new Date(r24).getTime();
+      const r1Ms = new Date(r1).getTime();
+
+      // Only set reminders if they are still in the future.
+      // If they're already due, leave null so we don't send "tomorrow" after the fact.
+      if (r24Ms > nowMs) reminder24hAt = r24;
+      if (r1Ms > nowMs) reminder1hAt = r1;
+    }
 
     // 4) Update booking (only set email if we have one)
+    // Also: if session already started, mark reminders as sent to prevent retries.
     await supabaseAdmin
       .from("bookings")
       .update({
         ...(email ? { user_email: email } : {}),
-        reminder_24h_at: reminder24h,
-        reminder_1h_at: reminder1h,
+        reminder_24h_at: reminder24hAt,
+        reminder_1h_at: reminder1hAt,
+        ...(hasStarted
+          ? { reminder_24h_sent: true, reminder_1h_sent: true }
+          : {}),
       })
       .eq("id", bookingRow.id);
 
