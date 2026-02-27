@@ -68,11 +68,6 @@ export async function joinSession(
     const { userId } = auth();
     if (!userId) return { ok: false, error: "Not signed in" };
 
-    // This action is intended to be "Admin: Sign Up Free"
-    if (!isAdminUser(userId)) {
-      return { ok: false, error: "Not authorized" };
-    }
-
     const sessionId = String(formData.get("sessionId") || "").trim();
     if (!sessionId) return { ok: false, error: "Missing sessionId" };
 
@@ -81,12 +76,29 @@ export async function joinSession(
 
     const { data: sessionRow, error: sErr } = await supabaseAdmin
       .from("sessions")
-      .select("id,title,starts_at")
+      .select("id,title,starts_at,price_cents,status")
       .eq("id", sessionId)
       .maybeSingle();
 
     if (sErr || !sessionRow) {
       return { ok: false, error: "Session not found" };
+    }
+
+    if (sessionRow.status && sessionRow.status !== "scheduled") {
+      return { ok: false, error: "This session is not open for signup." };
+    }
+
+    const priceCents = Number(sessionRow.price_cents ?? 0);
+    const isFree = Number.isFinite(priceCents) && priceCents <= 0;
+
+    // Rules:
+    // - If free ($0): ANY signed-in user can join (non-Stripe flow).
+    // - If paid: only admins can use this action (for comp/test). Everyone else must use Stripe.
+    if (!isFree && !isAdminUser(userId)) {
+      return {
+        ok: false,
+        error: "This session requires payment. Please use the checkout button.",
+      };
     }
 
     // 1) Join via DB function (atomic + race-safe)
