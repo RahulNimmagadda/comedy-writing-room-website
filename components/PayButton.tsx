@@ -20,10 +20,20 @@ function safeErrorMessage(x: unknown, fallback: string) {
     const maybeError = anyX.error;
     const maybeMessage = anyX.message;
     if (typeof maybeError === "string" && maybeError.trim()) return maybeError;
-    if (typeof maybeMessage === "string" && maybeMessage.trim()) return maybeMessage;
+    if (typeof maybeMessage === "string" && maybeMessage.trim())
+      return maybeMessage;
   }
 
   return fallback;
+}
+
+function getClientTimezone(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return typeof tz === "string" ? tz : "";
+  } catch {
+    return "";
+  }
 }
 
 export default function PayButton({
@@ -64,11 +74,13 @@ export default function PayButton({
 
       // ✅ Free sessions: non-Stripe join flow
       if (isFree) {
+        const tz = getClientTimezone();
+
         const res = await fetch(`/sessions/${sessionId}/join`, {
           method: "POST",
+          headers: tz ? { "x-timezone": tz } : undefined,
         });
 
-        // Some routes might return JSON on error, or redirect on success.
         // If it's not ok, try to read text/json for a useful message.
         if (!res.ok) {
           let body: unknown = null;
@@ -96,7 +108,6 @@ export default function PayButton({
           throw new Error(msg);
         }
 
-        // If the server action redirects, fetch will typically follow and return ok.
         // Refresh to reflect updated booking state.
         window.location.reload();
         return;
