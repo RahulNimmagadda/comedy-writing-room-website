@@ -11,23 +11,19 @@ function formatUsd(cents: number) {
   }).format(safe / 100);
 }
 
-function getClientTimezone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  } catch {
-    return "UTC";
-  }
-}
+function safeErrorMessage(x: unknown, fallback: string) {
+  if (typeof x === "string" && x.trim()) return x;
+  if (x instanceof Error && x.message.trim()) return x.message;
 
-type Json = Record<string, unknown>;
-
-function safeJsonParse(text: string): Json | null {
-  try {
-    const v = JSON.parse(text);
-    return v && typeof v === "object" ? (v as Json) : null;
-  } catch {
-    return null;
+  if (x && typeof x === "object") {
+    const anyX = x as Record<string, unknown>;
+    const maybeError = anyX.error;
+    const maybeMessage = anyX.message;
+    if (typeof maybeError === "string" && maybeError.trim()) return maybeError;
+    if (typeof maybeMessage === "string" && maybeMessage.trim()) return maybeMessage;
   }
+
+  return fallback;
 }
 
 export default function PayButton({
@@ -42,95 +38,92 @@ export default function PayButton({
   const [loading, setLoading] = useState(false);
   const { isSignedIn } = useAuth();
 
-  const isFree = useMemo(() => {
-    const n = Number(priceCents ?? 0);
-    return Number.isFinite(n) && n <= 0;
-  }, [priceCents]);
+  const isFree = Number.isFinite(priceCents) && priceCents <= 0;
 
   const label = useMemo(() => {
     if (disabled) return "Full";
-    if (loading) return isFree ? "Reserving…" : "Redirecting…";
+    if (loading) return "Working…";
     if (isFree) return "Reserve spot (Free)";
     return `Pay ${formatUsd(priceCents)} to reserve spot`;
   }, [disabled, loading, isFree, priceCents]);
 
-  const onClick = async () => {
-    // Gate signup behind auth (free or paid)
+  const ensureSignedIn = () => {
     if (!isSignedIn) {
       const redirectUrl = encodeURIComponent(`/?signup=${sessionId}`);
       window.location.assign(`/sign-in?redirect_url=${redirectUrl}`);
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const onClick = async () => {
+    if (!ensureSignedIn()) return;
 
     try {
       setLoading(true);
 
-      // ---- FREE FLOW (non-Stripe) ----
+      // ✅ Free sessions: non-Stripe join flow
       if (isFree) {
-        const timezone = getClientTimezone();
-
-        const res = await fetch(`/sessions/${encodeURIComponent(sessionId)}/join`, {
+        const res = await fetch(`/sessions/${sessionId}/join`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ timezone }),
-          redirect: "follow",
         });
 
-        // If the route handler performs a redirect, respect it
-        if (res.redirected) {
-          window.location.assign(res.url);
-          return;
-        }
-
-        const text = await res.text();
-        const data = safeJsonParse(text);
-
+        // Some routes might return JSON on error, or redirect on success.
+        // If it's not ok, try to read text/json for a useful message.
         if (!res.ok) {
+          let body: unknown = null;
+
+          const ct = res.headers.get("content-type") || "";
+          if (ct.includes("application/json")) {
+            try {
+              body = await res.json();
+            } catch {
+              body = null;
+            }
+          } else {
+            try {
+              body = await res.text();
+            } catch {
+              body = null;
+            }
+          }
+
           const msg =
-            (data?.error && String(data.error)) ||
-            text ||
-            "Failed to reserve spot";
+            typeof body === "string"
+              ? body
+              : safeErrorMessage(body, "Failed to reserve spot");
+
           throw new Error(msg);
         }
 
-        // Common patterns: { url } / { redirectTo } / { ok: true }
-        const url =
-          (data?.url && String(data.url)) ||
-          (data?.redirectTo && String(data.redirectTo)) ||
-          null;
-
-        if (url) {
-          window.location.assign(url);
-          return;
-        }
-
-        // If no explicit redirect, just refresh so UI reflects reserved state
+        // If the server action redirects, fetch will typically follow and return ok.
+        // Refresh to reflect updated booking state.
         window.location.reload();
         return;
       }
 
-      // ---- PAID FLOW (Stripe checkout) ----
+      // ✅ Paid sessions: Stripe checkout flow
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId }),
       });
 
-      const data = (await res.json()) as { url?: string; error?: string };
+      const data = (await res.json()) as unknown;
 
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || "Failed to create checkout session");
+      const url =
+        data && typeof data === "object" && "url" in data
+          ? (data as { url?: unknown }).url
+          : undefined;
+
+      if (!res.ok || typeof url !== "string" || !url) {
+        const msg = safeErrorMessage(data, "Failed to create checkout session");
+        throw new Error(msg);
       }
 
-      window.location.assign(data.url);
+      window.location.assign(url);
     } catch (e: unknown) {
-      const message =
-        e instanceof Error
-          ? e.message
-          : typeof e === "string"
-          ? e
-          : "Something went wrong";
-      alert(message);
+      alert(safeErrorMessage(e, "Something went wrong"));
     } finally {
       setLoading(false);
     }
