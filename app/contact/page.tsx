@@ -5,7 +5,8 @@ export default function ContactPage() {
 
       <div className="text-base opacity-80">
         <p>
-          Contact email: <span className="font-medium">[add email here]</span>
+          Contact email:{" "}
+          <span className="font-medium">hello@comedywritingroom.com</span>
         </p>
       </div>
     </main>
