@@ -32,7 +32,7 @@ export default function UpcomingImprovementsPage() {
     {
       title: "More sessions across timezones",
       description:
-        "We’re adding sessions at times that work for comics in Europe, Australia, and beyond — so no one has to wake up at 3am for a writing room.",
+        "We're expanding session times so comics in Europe, Australia, and other regions can join rooms without having to wake up at 3am.",
       icon: (
         <svg
           viewBox="0 0 24 24"
@@ -47,9 +47,9 @@ export default function UpcomingImprovementsPage() {
       ),
     },
     {
-      title: "Session search + filtering",
+      title: "Host your own writing sessions",
       description:
-        "Filter sessions by time, day, timezone, or host. Quickly find the rooms that fit your schedule.",
+        "Comics will be able to create and host their own writing rooms — set pricing, choose room caps, schedule sessions, and run rooms for their own communities.",
       icon: (
         <svg
           viewBox="0 0 24 24"
@@ -58,32 +58,16 @@ export default function UpcomingImprovementsPage() {
           stroke="currentColor"
           strokeWidth="2"
         >
-          <path d="M21 21l-4.3-4.3" />
-          <circle cx="10.5" cy="10.5" r="6.5" />
-        </svg>
-      ),
-    },
-    {
-      title: "Zoom API automation",
-      description:
-        "Automatically create a dedicated Zoom room (and secondary rooms for overflow) for each session. No more manual links — each session gets a fresh, unique link.",
-      icon: (
-        <svg
-          viewBox="0 0 24 24"
-          className="h-5 w-5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M15 10l4-2v8l-4-2v-4z" />
-          <rect x="3" y="7" width="12" height="10" rx="2" />
+          <path d="M12 5v14" />
+          <path d="M5 12h14" />
+          <rect x="4" y="4" width="16" height="16" rx="2" />
         </svg>
       ),
     },
     {
       title: "More to come",
       description:
-        "We’re listening. The best improvements come from people who actually use the room.",
+        "We're building this with the community. The best improvements come directly from comics who use the room.",
       icon: (
         <svg
           viewBox="0 0 24 24"
@@ -104,8 +88,8 @@ export default function UpcomingImprovementsPage() {
         <h1 className="text-4xl font-semibold tracking-tight">
           Upcoming Improvements
         </h1>
-        <p className="mt-2 text-sm text-zinc-600 leading-relaxed">
-          We’re building this with the community. Here’s what’s coming.
+        <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+          We're building this with the community. Here's what's coming.
         </p>
       </div>
 
@@ -118,12 +102,11 @@ export default function UpcomingImprovementsPage() {
       <div className="rounded-2xl border border-zinc-200/70 bg-white/70 px-6 py-6 text-sm text-zinc-700 shadow-sm">
         Want to suggest something?{" "}
         <Link
-          href="/contact"
+          href="mailto:hello@comedywritingroom.com"
           className="font-semibold text-zinc-900 underline decoration-zinc-300 underline-offset-4 hover:decoration-zinc-500"
         >
-          Send feedback
+          hello@comedywritingroom.com
         </Link>
-        .
       </div>
     </div>
   );
