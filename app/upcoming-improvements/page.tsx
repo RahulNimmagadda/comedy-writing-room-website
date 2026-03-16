@@ -89,7 +89,8 @@ export default function UpcomingImprovementsPage() {
           Upcoming Improvements
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-          We're building this with the community. Here's what's coming.
+          We&apos;re building this with the community. Here&apos;s what&apos;s
+          coming.
         </p>
       </div>
 
