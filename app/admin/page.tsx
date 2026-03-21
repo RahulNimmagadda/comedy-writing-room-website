@@ -50,6 +50,7 @@ export default async function AdminPage() {
     const zoomLinkRaw = String(formData.get("zoom_link") || "").trim();
 
     if (!startsAtLocal) throw new Error("Missing start time");
+    if (!zoomLinkRaw) throw new Error("Missing zoom link");
 
     const dt = DateTime.fromFormat(startsAtLocal, "yyyy-MM-dd'T'HH:mm", {
       zone: "America/New_York",
@@ -60,15 +61,13 @@ export default async function AdminPage() {
     const startsAtUtcIso = dt.toUTC().toISO();
     if (!startsAtUtcIso) throw new Error("Failed to convert start time");
 
-    const zoom_link = zoomLinkRaw.length ? zoomLinkRaw : null;
-
     const { error } = await supabaseAdmin.from("sessions").insert({
       title,
       starts_at: startsAtUtcIso,
       duration_minutes: duration,
       seat_cap: seatCap,
       status: "scheduled",
-      zoom_link,
+      zoom_link: zoomLinkRaw,
     });
 
     if (error) throw new Error(error.message);
@@ -84,32 +83,13 @@ export default async function AdminPage() {
 
     const sessionId = String(formData.get("sessionId") || "");
     const zoomLinkRaw = String(formData.get("zoom_link") || "").trim();
-    const zoom_link = zoomLinkRaw.length ? zoomLinkRaw : null;
 
     if (!sessionId) throw new Error("Missing sessionId");
+    if (!zoomLinkRaw) throw new Error("Missing zoom link");
 
     const { error } = await supabaseAdmin
       .from("sessions")
-      .update({ zoom_link })
-      .eq("id", sessionId);
-
-    if (error) throw new Error(error.message);
-
-    redirect("/admin");
-  }
-
-  async function clearZoomLink(formData: FormData) {
-    "use server";
-
-    const { userId } = auth();
-    if (!isAdmin(userId)) throw new Error("Not authorized");
-
-    const sessionId = String(formData.get("sessionId") || "");
-    if (!sessionId) throw new Error("Missing sessionId");
-
-    const { error } = await supabaseAdmin
-      .from("sessions")
-      .update({ zoom_link: null })
+      .update({ zoom_link: zoomLinkRaw })
       .eq("id", sessionId);
 
     if (error) throw new Error(error.message);
@@ -194,11 +174,12 @@ export default async function AdminPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm opacity-70">Zoom link (optional)</label>
+            <label className="text-sm opacity-70">Zoom link</label>
             <input
               name="zoom_link"
               placeholder="https://zoom.us/j/..."
               className="w-full border rounded px-3 py-2"
+              required
             />
           </div>
 
@@ -211,7 +192,8 @@ export default async function AdminPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Edit Zoom links</h2>
         <p className="text-sm opacity-60">
-          Update a session’s Zoom link. Users only see it after they join.
+          Every session should have one shared Zoom link. Attendees join that
+          room and breakout rooms are handled inside Zoom.
         </p>
 
         <div className="space-y-3">
@@ -238,16 +220,10 @@ export default async function AdminPage() {
                   defaultValue={s.zoom_link ?? ""}
                   placeholder="https://zoom.us/j/..."
                   className="flex-1 border rounded px-3 py-2"
+                  required
                 />
                 <button className="px-3 py-2 rounded bg-black text-white">
                   Save
-                </button>
-              </form>
-
-              <form action={clearZoomLink}>
-                <input type="hidden" name="sessionId" value={s.id} />
-                <button className="text-sm underline opacity-70">
-                  Clear zoom link
                 </button>
               </form>
             </div>

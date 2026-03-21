@@ -15,12 +15,6 @@ type SessionRow = {
   price_cents: number;
 };
 
-type ZoomRoomRow = {
-  room_number: number;
-  room_label: string;
-  zoom_link: string;
-};
-
 function requireAdmin() {
   const { userId } = auth();
   if (!userId) redirect("/");
@@ -69,37 +63,25 @@ function centsToDollarsString(cents: number) {
 export default async function AdminSessionsPage() {
   requireAdmin();
 
-  const [{ data: sessions, error }, { data: zoomRooms, error: zoomRoomsError }] =
-    await Promise.all([
-      supabaseAdmin
-        .from("sessions")
-        .select(
-          "id,title,starts_at,duration_minutes,seat_cap,status,zoom_link,price_cents"
-        )
-        .order("starts_at", { ascending: true }),
-      supabaseAdmin
-        .from("zoom_rooms")
-        .select("room_number,room_label,zoom_link")
-        .order("room_number", { ascending: true }),
-    ]);
+  const { data: sessions, error } = await supabaseAdmin
+    .from("sessions")
+    .select(
+      "id,title,starts_at,duration_minutes,seat_cap,status,zoom_link,price_cents"
+    )
+    .order("starts_at", { ascending: true });
 
-  if (error || zoomRoomsError) {
+  if (error) {
     return (
       <main className="min-h-screen max-w-4xl mx-auto p-6 space-y-6">
         <h1 className="text-2xl font-bold">Admin · Sessions</h1>
         <pre className="p-4 border rounded bg-white overflow-auto">
-          {JSON.stringify({ sessionsError: error, zoomRoomsError }, null, 2)}
+          {JSON.stringify({ sessionsError: error }, null, 2)}
         </pre>
       </main>
     );
   }
 
   const rows = (sessions ?? []) as SessionRow[];
-  const rooms = (zoomRooms ?? []) as ZoomRoomRow[];
-
-  // Map zoom_link -> room_number for defaulting the dropdown on edit
-  const zoomLinkToRoomNumber = new Map<string, number>();
-  for (const r of rooms) zoomLinkToRoomNumber.set(r.zoom_link, r.room_number);
 
   return (
     <main className="min-h-screen max-w-4xl mx-auto p-6 space-y-8">
@@ -121,10 +103,14 @@ export default async function AdminSessionsPage() {
 
         <div className="text-xs opacity-70 leading-relaxed">
           <div>
-            <b>Community</b> suggestion: price <b>$1</b>, seat cap <b>5</b> (auto-splitting total cap = 25).
+            <b>Community</b> suggestion: price <b>$1</b>, seat cap <b>5</b>.
           </div>
           <div>
-            <b>Pro</b> suggestion: price <b>$5</b>, seat cap <b>5</b> (strict total cap = 5). Consider setting a single-room override.
+            <b>Pro</b> suggestion: price <b>$5</b>, seat cap <b>5</b>.
+          </div>
+          <div>
+            Every session should have one Zoom link. Everyone joins that room,
+            and breakout rooms are handled inside Zoom.
           </div>
         </div>
 
@@ -187,7 +173,6 @@ export default async function AdminSessionsPage() {
             <option value="completed">completed</option>
           </select>
 
-          {/* NEW: recurrence */}
           <div className="md:col-span-3">
             <label className="text-xs opacity-70">
               Repeat weekly (additional weeks)
@@ -204,25 +189,11 @@ export default async function AdminSessionsPage() {
             </div>
           </div>
 
-          <select
-            name="zoom_room_number"
-            className="border rounded px-3 py-2 md:col-span-4"
-            defaultValue=""
-          >
-            <option value="">
-              Zoom room (optional) — choose to set a single-room override
-            </option>
-            {rooms.map((r) => (
-              <option key={r.room_number} value={String(r.room_number)}>
-                {r.room_number} — {r.room_label}
-              </option>
-            ))}
-          </select>
-
           <input
             name="zoom_link"
-            className="border rounded px-3 py-2 md:col-span-5"
-            placeholder="Zoom link override (optional)"
+            className="border rounded px-3 py-2 md:col-span-9"
+            placeholder="https://zoom.us/j/..."
+            required
           />
 
           <button className="md:col-span-12 px-3 py-2 rounded bg-black text-white">
@@ -235,9 +206,7 @@ export default async function AdminSessionsPage() {
           and stored as UTC ISO.
         </p>
         <p className="text-xs opacity-60">
-          Zoom behavior: selecting a Zoom room sets a <b>single-room override</b>{" "}
-          (everyone goes to the same link). Leave both fields blank to use the
-          default auto-splitting rooms.
+          Single-room mode: everyone joins the same Zoom room for the session.
         </p>
       </section>
 
@@ -252,35 +221,30 @@ export default async function AdminSessionsPage() {
         ) : (
           <div className="space-y-3">
             {rows.map((s) => {
-              const defaultRoomNumber =
-                s.zoom_link && zoomLinkToRoomNumber.has(s.zoom_link)
-                  ? String(zoomLinkToRoomNumber.get(s.zoom_link)!)
-                  : "";
-
               const isOverridden = !!(s.zoom_link && s.zoom_link.trim().length > 0);
 
               return (
-                <div
-                  key={s.id}
-                  className="border rounded bg-white p-4 space-y-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="text-sm opacity-70">
-                      <div className="font-mono text-xs opacity-70">
-                        id: {s.id}
-                      </div>
-                      <div className="text-xs mt-1">
-                        Starts (NYC): <b>{utcIsoToNycDatetimeLocal(s.starts_at)}</b>
-                      </div>
-                      <div className="text-xs mt-1">
-                        Zoom mode:{" "}
-                        <b>{isOverridden ? "Single-room override" : "Auto-splitting"}</b>
+                <section key={s.id} className="border rounded bg-white p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="font-semibold">{s.title}</div>
+                      <div className="text-sm opacity-70">
+                        {new Date(s.starts_at).toLocaleString("en-US", {
+                          timeZone: NYC_TZ,
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}{" "}
+                        • {s.duration_minutes} min • cap {s.seat_cap} •{" "}
+                        {s.status} • ${centsToDollarsString(s.price_cents)}
                       </div>
                     </div>
 
                     <form action={deleteSession}>
                       <input type="hidden" name="id" value={s.id} />
-                      <button className="text-sm px-3 py-2 rounded border hover:bg-gray-50">
+                      <button className="text-sm underline text-red-600">
                         Delete
                       </button>
                     </form>
@@ -288,128 +252,82 @@ export default async function AdminSessionsPage() {
 
                   <form
                     action={updateSession}
-                    className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end"
+                    className="grid grid-cols-1 md:grid-cols-12 gap-3"
                   >
                     <input type="hidden" name="id" value={s.id} />
 
-                    <div className="md:col-span-4">
-                      <label className="text-xs opacity-60">Title</label>
-                      <input
-                        name="title"
-                        className="border rounded px-3 py-2 w-full"
-                        defaultValue={s.title}
-                        required
-                      />
+                    <input
+                      name="title"
+                      defaultValue={s.title}
+                      className="border rounded px-3 py-2 md:col-span-4"
+                      required
+                    />
+
+                    <input
+                      name="starts_at_local"
+                      type="datetime-local"
+                      defaultValue={utcIsoToNycDatetimeLocal(s.starts_at)}
+                      className="border rounded px-3 py-2 md:col-span-3"
+                      required
+                    />
+
+                    <input
+                      name="duration_minutes"
+                      type="number"
+                      min={1}
+                      defaultValue={s.duration_minutes}
+                      className="border rounded px-3 py-2 md:col-span-1"
+                      required
+                    />
+
+                    <input
+                      name="seat_cap"
+                      type="number"
+                      min={1}
+                      defaultValue={s.seat_cap}
+                      className="border rounded px-3 py-2 md:col-span-1"
+                      required
+                    />
+
+                    <input
+                      name="price_dollars"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      defaultValue={centsToDollarsString(s.price_cents)}
+                      className="border rounded px-3 py-2 md:col-span-1"
+                      required
+                    />
+
+                    <select
+                      name="status"
+                      defaultValue={s.status}
+                      className="border rounded px-3 py-2 md:col-span-2"
+                    >
+                      <option value="scheduled">scheduled</option>
+                      <option value="cancelled">cancelled</option>
+                      <option value="completed">completed</option>
+                    </select>
+
+                    <input
+                      name="zoom_link"
+                      defaultValue={s.zoom_link ?? ""}
+                      className="border rounded px-3 py-2 md:col-span-12"
+                      placeholder="https://zoom.us/j/..."
+                      required
+                    />
+
+                    <div className="md:col-span-12 text-xs opacity-60">
+                      {isOverridden
+                        ? "This session has a Zoom link set."
+                        : "Add a Zoom link so attendees can join the shared room."}
                     </div>
 
-                    <div className="md:col-span-3">
-                      <label className="text-xs opacity-60">
-                        Starts at (NYC)
-                      </label>
-                      <input
-                        name="starts_at_local"
-                        type="datetime-local"
-                        className="border rounded px-3 py-2 w-full"
-                        defaultValue={utcIsoToNycDatetimeLocal(s.starts_at)}
-                        required
-                      />
-                    </div>
-
-                    <div className="md:col-span-1">
-                      <label className="text-xs opacity-60">Minutes</label>
-                      <input
-                        name="duration_minutes"
-                        type="number"
-                        min={1}
-                        className="border rounded px-3 py-2 w-full"
-                        defaultValue={s.duration_minutes}
-                        required
-                      />
-                    </div>
-
-                    <div className="md:col-span-1">
-                      <label className="text-xs opacity-60">Seat cap</label>
-                      <input
-                        name="seat_cap"
-                        type="number"
-                        min={1}
-                        className="border rounded px-3 py-2 w-full"
-                        defaultValue={s.seat_cap}
-                        required
-                      />
-                    </div>
-
-                    <div className="md:col-span-1">
-                      <label className="text-xs opacity-60">Price ($)</label>
-                      <input
-                        name="price_dollars"
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        className="border rounded px-3 py-2 w-full"
-                        defaultValue={centsToDollarsString(s.price_cents)}
-                        required
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="text-xs opacity-60">Status</label>
-                      <select
-                        name="status"
-                        className="border rounded px-3 py-2 w-full"
-                        defaultValue={s.status}
-                      >
-                        <option value="scheduled">scheduled</option>
-                        <option value="cancelled">cancelled</option>
-                        <option value="completed">completed</option>
-                      </select>
-                    </div>
-
-                    <div className="md:col-span-4">
-                      <label className="text-xs opacity-60">
-                        Zoom room (optional)
-                      </label>
-                      <select
-                        name="zoom_room_number"
-                        className="border rounded px-3 py-2 w-full"
-                        defaultValue={defaultRoomNumber}
-                      >
-                        <option value="">
-                          (no room selected) — use manual link below / auto-splitting if blank
-                        </option>
-                        {rooms.map((r) => (
-                          <option key={r.room_number} value={String(r.room_number)}>
-                            {r.room_number} — {r.room_label}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="text-[11px] opacity-60 mt-1">
-                        If a room is selected, the manual link is ignored.
-                      </div>
-                    </div>
-
-                    <div className="md:col-span-6">
-                      <label className="text-xs opacity-60">
-                        Zoom link override (optional)
-                      </label>
-                      <input
-                        name="zoom_link"
-                        className="border rounded px-3 py-2 w-full"
-                        defaultValue={s.zoom_link ?? ""}
-                        placeholder="Leave blank to clear (unless room selected)"
-                      />
-                      <div className="text-[11px] opacity-60 mt-1">
-                        To return to auto-splitting: set Zoom room to “no room selected” and clear this link.
-                      </div>
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <button className="px-3 py-2 rounded bg-black text-white w-full">
-                        Save
-                      </button>
-                    </div>
+                    <button className="md:col-span-12 px-3 py-2 rounded bg-black text-white">
+                      Save changes
+                    </button>
                   </form>
-                </div>
+                </section>
               );
             })}
           </div>
