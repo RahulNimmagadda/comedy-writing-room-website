@@ -13,14 +13,15 @@ function requireEnv(name: string) {
 }
 
 function getSiteUrl() {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL;
+  const explicit =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL;
+
   if (explicit) return explicit.replace(/\/+$/, "");
 
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) return `https://${vercelUrl}`.replace(/\/+$/, "");
-
-  // last-resort fallback (local dev)
-  return "http://localhost:3000";
+  // Safe production fallback so email links never point to a Vercel/internal URL
+  return "https://comedywritingroom.com";
 }
 
 export function siteUrl() {
@@ -61,7 +62,10 @@ export async function sendEmail({ to, subject, html, text }: SendEmailArgs) {
  */
 export function formatInTimezone(iso: string, timezone?: string | null) {
   const d = new Date(iso);
-  const tz = timezone && typeof timezone === "string" && timezone.length > 0 ? timezone : "UTC";
+  const tz =
+    timezone && typeof timezone === "string" && timezone.length > 0
+      ? timezone
+      : "UTC";
 
   try {
     return new Intl.DateTimeFormat("en-US", {
