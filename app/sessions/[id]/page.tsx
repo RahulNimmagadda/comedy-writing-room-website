@@ -15,6 +15,14 @@ function isJoinWindowOpen(startsAtIso: string, durationMinutes: number) {
   return now >= openAt && now <= closeAt;
 }
 
+type SessionRow = {
+  id: string;
+  title: string;
+  starts_at: string;
+  duration_minutes: number;
+  zoom_link: string | null;
+};
+
 export default async function SessionPage({
   params,
 }: {
@@ -25,12 +33,11 @@ export default async function SessionPage({
 
   const { id: sessionId } = await params;
 
-  // ✅ IMPORTANT: include zoom_link here
   const { data: session, error: sessionError } = await supabaseAdmin
     .from("sessions")
     .select("id, title, starts_at, duration_minutes, zoom_link")
     .eq("id", sessionId)
-    .single();
+    .single<SessionRow>();
 
   if (sessionError || !session) {
     return (
@@ -63,7 +70,6 @@ export default async function SessionPage({
     );
   }
 
-  // Ensure user is booked
   const { data: booking } = await supabaseAdmin
     .from("bookings")
     .select("id")
@@ -109,12 +115,17 @@ export default async function SessionPage({
         .eq("id", b.id);
     }
 
-    // ✅ NEW: use session-level zoom link
-    if (!session.zoom_link) {
+    const { data: currentSession } = await supabaseAdmin
+      .from("sessions")
+      .select("zoom_link")
+      .eq("id", sessionId)
+      .single<{ zoom_link: string | null }>();
+
+    if (!currentSession?.zoom_link) {
       redirect(`/sessions/${sessionId}`);
     }
 
-    redirect(session.zoom_link);
+    redirect(currentSession.zoom_link);
   }
 
   return (
