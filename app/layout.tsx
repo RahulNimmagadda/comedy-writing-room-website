@@ -9,16 +9,11 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://www.comedywritingroom.com"),
   title: "Comedy Writing Room",
   description: "Daily virtual writing rooms for stand-up comedians",
-
   icons: {
-    icon: [
-      { url: "/icon.png?v=3", type: "image/png" },
-      { url: "/favicon.png?v=3", type: "image/png" },
-    ],
-    shortcut: ["/icon.png?v=3"],
-    apple: ["/icon.png?v=3"],
+    icon: [{ url: "/favicon.avif?v=5", type: "image/avif" }],
+    shortcut: ["/favicon.avif?v=5"],
+    apple: ["/favicon.avif?v=5"],
   },
-
   openGraph: {
     title: "Comedy Writing Room",
     description: "Daily virtual writing rooms for stand-up comedians",
@@ -34,7 +29,6 @@ export const metadata: Metadata = {
       },
     ],
   },
-
   twitter: {
     card: "summary_large_image",
     title: "Comedy Writing Room",
@@ -65,12 +59,10 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <head>
-          {/* 🔥 FORCE override favicon (kills cache issues) */}
-          <link rel="icon" href="/icon.png?v=3" />
-          <link rel="shortcut icon" href="/icon.png?v=3" />
-          <link rel="apple-touch-icon" href="/icon.png?v=3" />
+          <link rel="icon" href="/favicon.avif?v=5" type="image/avif" />
+          <link rel="shortcut icon" href="/favicon.avif?v=5" />
+          <link rel="apple-touch-icon" href="/favicon.avif?v=5" />
         </head>
-
         <body className="min-h-screen bg-[#fbfaf7] text-zinc-900 antialiased dark:bg-[#fbfaf7] dark:text-zinc-900">
           <div className="border-b border-zinc-200/60 bg-amber-400/90">
             <div className="mx-auto max-w-6xl px-4 py-2 text-center text-xs font-medium text-zinc-900 sm:px-6 lg:px-8">
@@ -107,16 +99,25 @@ export default function RootLayout({
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>Comedy Writing Room</div>
                 <div className="flex items-center gap-4">
-                  <Link className="transition hover:text-zinc-700" href="/how-it-works">
+                  <Link
+                    className="transition hover:text-zinc-700"
+                    href="/how-it-works"
+                  >
                     How It Works
                   </Link>
-                  <Link className="transition hover:text-zinc-700" href="/upcoming-improvements">
+                  <Link
+                    className="transition hover:text-zinc-700"
+                    href="/upcoming-improvements"
+                  >
                     Upcoming Improvements
                   </Link>
                   <Link className="transition hover:text-zinc-700" href="/about">
                     About
                   </Link>
-                  <Link className="transition hover:text-zinc-700" href="/contact">
+                  <Link
+                    className="transition hover:text-zinc-700"
+                    href="/contact"
+                  >
                     Contact
                   </Link>
                 </div>
