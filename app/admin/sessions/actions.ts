@@ -35,6 +35,22 @@ function dollarsToCents(dollars: number) {
   return Math.max(0, Math.round(safe * 100));
 }
 
+function getDefaultZoomLink() {
+  return String(process.env.DEFAULT_ZOOM_LINK ?? "").trim();
+}
+
+function resolveZoomLink(rawValue: FormDataEntryValue | null) {
+  const manual = String(rawValue ?? "").trim();
+  const fallback = getDefaultZoomLink();
+  const finalZoomLink = manual || fallback;
+
+  if (!finalZoomLink) {
+    throw new Error("Zoom link is required. Add one in the form or set DEFAULT_ZOOM_LINK.");
+  }
+
+  return finalZoomLink;
+}
+
 function nycLocalToUtcIso(local: string) {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local);
   if (!m) throw new Error("Invalid starts_at_local format.");
@@ -90,9 +106,6 @@ function addDaysUtcIso(utcIso: string, days: number) {
   return d.toISOString();
 }
 
-/**
- * 🔥 CREATE SESSION (ENFORCES ZOOM LINK)
- */
 export async function createSession(formData: FormData) {
   requireAdminOrRedirect();
 
@@ -107,11 +120,10 @@ export async function createSession(formData: FormData) {
 
   const repeatWeeks = Math.max(0, parseIntSafe(formData.get("repeat_weeks"), 0));
 
-  const zoomLink = String(formData.get("zoom_link") ?? "").trim();
+  const zoomLink = resolveZoomLink(formData.get("zoom_link"));
 
   if (!title) throw new Error("Title is required.");
   if (!startsAtLocal) throw new Error("Start time is required.");
-  if (!zoomLink) throw new Error("Zoom link is required.");
 
   const startsAtUtcIso = nycLocalToUtcIso(startsAtLocal);
 
@@ -135,9 +147,6 @@ export async function createSession(formData: FormData) {
   revalidatePath("/admin/sessions");
 }
 
-/**
- * 🔥 UPDATE SESSION (ENFORCES ZOOM LINK)
- */
 export async function updateSession(formData: FormData) {
   requireAdminOrRedirect();
 
@@ -151,12 +160,11 @@ export async function updateSession(formData: FormData) {
   const priceDollars = parseFloatSafe(formData.get("price_dollars"), 0);
   const priceCents = dollarsToCents(priceDollars);
 
-  const zoomLink = String(formData.get("zoom_link") ?? "").trim();
+  const zoomLink = resolveZoomLink(formData.get("zoom_link"));
 
   if (!id) throw new Error("Missing session id.");
   if (!title) throw new Error("Title is required.");
   if (!startsAtLocal) throw new Error("Start time is required.");
-  if (!zoomLink) throw new Error("Zoom link is required.");
 
   const startsAtUtcIso = nycLocalToUtcIso(startsAtLocal);
 
