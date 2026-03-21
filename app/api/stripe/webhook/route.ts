@@ -55,16 +55,21 @@ async function getClerkEmail(userId: string) {
       user.emailAddresses?.[0]?.emailAddress ??
       null
     );
-  } catch {
+  } catch (err: unknown) {
+    console.error("Failed to fetch Clerk email in Stripe webhook", {
+      userId,
+      error: getErrorMessage(err),
+    });
     return null;
   }
 }
 
-function getStripeCheckoutEmail(session: Stripe.Checkout.Session): string | null {
+function getStripeCheckoutEmail(
+  session: Stripe.Checkout.Session
+): string | null {
   const cd = session.customer_details as { email?: string | null } | null;
   const emailFromDetails = cd?.email ?? null;
 
-  // Stripe type support varies by version; avoid `any` by widening with a safe type.
   type SessionWithCustomerEmail = Stripe.Checkout.Session & {
     customer_email?: string | null;
   };
@@ -84,13 +89,28 @@ async function enrichBookingAndSendConfirmation(args: {
   const clerkEmail = await getClerkEmail(args.clerkUserId);
   const email = clerkEmail ?? args.fallbackEmail ?? null;
 
+  if (!email) {
+    console.error("No email found for booking enrichment", {
+      clerkUserId: args.clerkUserId,
+      writingSessionId: args.writingSessionId,
+      fallbackEmail: args.fallbackEmail ?? null,
+    });
+  }
+
   const { data: sessionRow, error: sErr } = await supabaseAdmin
     .from("sessions")
     .select("id,title,starts_at")
     .eq("id", args.writingSessionId)
     .maybeSingle();
 
-  if (sErr || !sessionRow) return { enriched: false };
+  if (sErr || !sessionRow) {
+    console.error("Failed to load session during booking enrichment", {
+      clerkUserId: args.clerkUserId,
+      writingSessionId: args.writingSessionId,
+      error: sErr?.message ?? "Session not found",
+    });
+    return { enriched: false };
+  }
 
   const { data: bookingRow, error: bErr } = await supabaseAdmin
     .from("bookings")
@@ -101,9 +121,15 @@ async function enrichBookingAndSendConfirmation(args: {
     .limit(1)
     .maybeSingle();
 
-  if (bErr || !bookingRow) return { enriched: false };
+  if (bErr || !bookingRow) {
+    console.error("Failed to load booking during enrichment", {
+      clerkUserId: args.clerkUserId,
+      writingSessionId: args.writingSessionId,
+      error: bErr?.message ?? "Booking not found",
+    });
+    return { enriched: false };
+  }
 
-  // update reminder fields + email (best-effort)
   await supabaseAdmin
     .from("bookings")
     .update({
@@ -113,7 +139,6 @@ async function enrichBookingAndSendConfirmation(args: {
     })
     .eq("id", bookingRow.id);
 
-  // send confirmation once
   if (email && !bookingRow.confirmation_sent) {
     try {
       await sendEmail({
@@ -129,8 +154,13 @@ async function enrichBookingAndSendConfirmation(args: {
         .from("bookings")
         .update({ confirmation_sent: true })
         .eq("id", bookingRow.id);
-    } catch {
-      // leave false so it can be retried later if needed
+    } catch (err: unknown) {
+      console.error("Confirmation email failed", {
+        clerkUserId: args.clerkUserId,
+        writingSessionId: args.writingSessionId,
+        email,
+        error: getErrorMessage(err),
+      });
     }
   }
 
@@ -194,14 +224,12 @@ export async function POST(req: Request) {
     );
   }
 
-  // Only handle checkout completion
   if (event.type !== "checkout.session.completed") {
     return NextResponse.json({ received: true, ignored: event.type });
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
 
-  // Only fulfill if actually paid
   if (session.payment_status !== "paid") {
     return NextResponse.json({
       received: true,
@@ -213,7 +241,6 @@ export async function POST(req: Request) {
   const writingSessionId = session.metadata?.writing_session_id;
 
   if (!clerkUserId || !writingSessionId) {
-    // Don't retry forever on permanently bad payloads
     return NextResponse.json({
       received: true,
       ignored: "missing_metadata",
@@ -222,11 +249,9 @@ export async function POST(req: Request) {
 
   const stripeEmail = getStripeCheckoutEmail(session);
 
-  // In payment mode, payment_intent should exist. Needed for refunds.
   const paymentIntentId =
     typeof session.payment_intent === "string" ? session.payment_intent : null;
 
-  // ✅ Enforce "paid users can join until 5 minutes after start"
   const { data: timeRow, error: timeErr } = await supabaseAdmin
     .from("sessions")
     .select("starts_at")
@@ -234,7 +259,6 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (timeErr || !timeRow?.starts_at) {
-    // Can't validate timing; retry so we don't accidentally fulfill/refund incorrectly
     return NextResponse.json(
       { error: "Could not load session start time" },
       { status: 500 }
@@ -253,7 +277,6 @@ export async function POST(req: Request) {
   const latestAllowedMs = startsAtMs + LATE_JOIN_GRACE_MS;
 
   if (Date.now() > latestAllowedMs) {
-    // Too late: auto-refund and stop retries
     try {
       const refundRes = await refundPaymentIntent({
         paymentIntentId,
@@ -271,7 +294,6 @@ export async function POST(req: Request) {
         reason: "too_late_after_start",
       });
     } catch (refundErr: unknown) {
-      // If refund fails, return 500 so Stripe retries (we still want to try to refund)
       return NextResponse.json(
         { error: `Refund failed: ${getErrorMessage(refundErr)}` },
         { status: 500 }
@@ -279,7 +301,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // Try to fulfill booking via DB function (atomic)
   const { error } = await supabaseAdmin.rpc("join_session", {
     p_session_id: writingSessionId,
     p_user_id: clerkUserId,
@@ -292,7 +313,6 @@ export async function POST(req: Request) {
       fallbackEmail: stripeEmail,
     });
 
-    // Make homepage reflect new booking ASAP
     revalidatePath("/");
 
     return NextResponse.json({ received: true, fulfilled: true });
@@ -300,7 +320,6 @@ export async function POST(req: Request) {
 
   const msg = String(error.message ?? "");
 
-  // Idempotency / retries: treat duplicate as success
   if (looksLikeDuplicateOrAlreadyJoined(msg)) {
     await enrichBookingAndSendConfirmation({
       clerkUserId,
@@ -308,13 +327,11 @@ export async function POST(req: Request) {
       fallbackEmail: stripeEmail,
     });
 
-    // Make homepage reflect booking ASAP
     revalidatePath("/");
 
     return NextResponse.json({ received: true, deduped: true });
   }
 
-  // Capacity / timing issues: AUTO-REFUND, then return 200 so Stripe stops retrying
   if (looksLikeCapacityOrJoinWindowFailure(msg)) {
     try {
       const refundRes = await refundPaymentIntent({
@@ -333,7 +350,6 @@ export async function POST(req: Request) {
         join_error: msg,
       });
     } catch (refundErr: unknown) {
-      // If refund fails, return 500 so Stripe retries (we still want to try to refund)
       return NextResponse.json(
         { error: `Refund failed: ${getErrorMessage(refundErr)}`, join_error: msg },
         { status: 500 }
@@ -341,6 +357,5 @@ export async function POST(req: Request) {
     }
   }
 
-  // Unknown failure: return 500 to trigger retry
   return NextResponse.json({ error: msg }, { status: 500 });
 }
