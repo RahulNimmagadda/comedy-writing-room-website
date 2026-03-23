@@ -35,12 +35,40 @@ export default async function AdminPage() {
       title,
       starts_at: startsAtUtc,
       duration_minutes: 60,
-      seat_cap: 5,
+      seat_cap: 9999, // ✅ FIXED
       status: "scheduled",
       zoom_link: zoomLink || null,
     });
 
-    redirect("/sessions");
+    redirect("/admin");
+  }
+
+  async function updateSession(formData: FormData) {
+    "use server";
+
+    const id = String(formData.get("id"));
+    const title = String(formData.get("title") || "");
+    const startsAtLocal = String(formData.get("starts_at") || "");
+    const zoomLink = String(formData.get("zoom_link") || "").trim();
+
+    if (!id || !startsAtLocal) throw new Error("Missing fields");
+
+    const dt = DateTime.fromFormat(startsAtLocal, "yyyy-MM-dd'T'HH:mm", {
+      zone: "America/New_York",
+    });
+
+    const startsAtUtc = dt.toUTC().toISO();
+
+    await supabaseAdmin
+      .from("sessions")
+      .update({
+        title,
+        starts_at: startsAtUtc,
+        zoom_link: zoomLink || null,
+      })
+      .eq("id", id);
+
+    redirect("/admin");
   }
 
   const { data: sessions } = await supabaseAdmin
@@ -52,11 +80,16 @@ export default async function AdminPage() {
     <main className="max-w-3xl mx-auto p-10 space-y-6">
       <h1 className="text-2xl font-bold">Admin</h1>
 
+      {/* CREATE */}
       <section className="border p-4 space-y-3 rounded">
-        <h2>Create Session</h2>
+        <h2 className="font-semibold">Create Session</h2>
 
         <form action={createSession} className="space-y-2">
-          <input name="title" defaultValue="Daily Writing Room" className="border p-2 w-full" />
+          <input
+            name="title"
+            defaultValue="Daily Writing Room"
+            className="border p-2 w-full"
+          />
 
           <input
             name="starts_at"
@@ -67,25 +100,62 @@ export default async function AdminPage() {
 
           <input
             name="zoom_link"
-            placeholder="Zoom link (optional if DEFAULT_ZOOM_LINK is set)"
+            placeholder="Zoom link (optional)"
             className="border p-2 w-full"
           />
 
-          <button className="bg-black text-white p-2 rounded">
+          <button className="bg-black text-white p-2 rounded w-full">
             Create
           </button>
         </form>
       </section>
 
-      <section className="space-y-3">
-        {sessions?.map((s) => (
-          <div key={s.id} className="border p-3 rounded">
-            <div>{s.title}</div>
-            <div className="text-sm opacity-70">
-              {new Date(s.starts_at).toLocaleString()}
-            </div>
-          </div>
-        ))}
+      {/* EDIT LIST */}
+      <section className="space-y-4">
+        {sessions?.map((s) => {
+          const local = DateTime.fromISO(s.starts_at, {
+            zone: "utc",
+          }).setZone("America/New_York");
+
+          return (
+            <form
+              key={s.id}
+              action={updateSession}
+              className="border p-4 rounded space-y-2"
+            >
+              <input type="hidden" name="id" value={s.id} />
+
+              <input
+                name="title"
+                defaultValue={s.title}
+                className="border p-2 w-full"
+              />
+
+              <input
+                name="starts_at"
+                type="datetime-local"
+                defaultValue={local.toFormat("yyyy-MM-dd'T'HH:mm")}
+                className="border p-2 w-full"
+              />
+
+              <input
+                name="zoom_link"
+                defaultValue={s.zoom_link || ""}
+                className="border p-2 w-full"
+              />
+
+              <div className="flex justify-between items-center">
+                <div className="text-sm opacity-60">
+                  {new Date(s.starts_at).toLocaleString()}
+                </div>
+
+                <button className="bg-black text-white px-3 py-1 rounded">
+                  Save
+                </button>
+              </div>
+            </form>
+          );
+        })}
       </section>
 
       <Link href="/">Back</Link>
