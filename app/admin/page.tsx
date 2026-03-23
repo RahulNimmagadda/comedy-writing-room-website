@@ -35,8 +35,9 @@ export default async function AdminPage() {
       title,
       starts_at: startsAtUtc,
       duration_minutes: 60,
-      seat_cap: 9999, // ✅ FIXED
+      seat_cap: 9999,
       status: "scheduled",
+      price_cents: 100,
       zoom_link: zoomLink || null,
     });
 
@@ -80,7 +81,6 @@ export default async function AdminPage() {
     <main className="max-w-3xl mx-auto p-10 space-y-6">
       <h1 className="text-2xl font-bold">Admin</h1>
 
-      {/* CREATE */}
       <section className="border p-4 space-y-3 rounded">
         <h2 className="font-semibold">Create Session</h2>
 
@@ -110,7 +110,6 @@ export default async function AdminPage() {
         </form>
       </section>
 
-      {/* EDIT LIST */}
       <section className="space-y-4">
         {sessions?.map((s) => {
           const local = DateTime.fromISO(s.starts_at, {
