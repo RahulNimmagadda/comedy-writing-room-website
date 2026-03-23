@@ -10,9 +10,9 @@ type SessionRow = {
   title: string;
   starts_at: string;
   duration_minutes: number;
+  seat_cap?: number | null;
   status: string;
   price_cents: number;
-  signup_count?: number;
 };
 
 function formatUsd(cents: number) {
@@ -24,15 +24,23 @@ function formatUsd(cents: number) {
 }
 
 function sessionType(priceCents: number) {
-  if (!Number.isFinite(priceCents)) return "community";
-  if (priceCents >= 450) return "pro";
-  return "community";
+  if (!Number.isFinite(priceCents)) return "Community";
+  if (priceCents >= 450) return "Pro";
+  return "Community";
 }
 
 export default function SessionsBrowser({
   sessions,
+  seatsBySession = {},
+  joinedSessionIds = [],
+  userId = null,
+  isAdmin = false,
 }: {
   sessions: SessionRow[];
+  seatsBySession?: Record<string, number>;
+  joinedSessionIds?: string[];
+  userId?: string | null;
+  isAdmin?: boolean;
 }) {
   const [state, formAction] = useActionState<JoinSessionResult | null, FormData>(
     joinSession,
@@ -43,18 +51,20 @@ export default function SessionsBrowser({
     <div className="space-y-4">
       {sessions.map((s) => {
         const type = sessionType(s.price_cents);
+        const signupCount = seatsBySession[s.id] ?? 0;
         const isFree = (s.price_cents ?? 0) <= 0;
+        const isJoined = joinedSessionIds.includes(s.id);
+        const canReserveDirectly = isFree || isAdmin;
 
         return (
-          <div
-            key={s.id}
-            className="border rounded-2xl p-6 flex flex-col gap-3"
-          >
+          <div key={s.id} className="border rounded-2xl p-6">
             <div className="flex items-start justify-between gap-4">
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2 text-sm opacity-80">
                   <LocalTime iso={s.starts_at} />
-                  <span className="px-2 py-0.5 border rounded-full">{type === "pro" ? "Pro" : "Community"}</span>
+                  <span className="px-2 py-0.5 border rounded-full">
+                    {type}
+                  </span>
                   {!isFree && (
                     <span className="px-2 py-0.5 border rounded-full">
                       {formatUsd(s.price_cents)}
@@ -70,24 +80,37 @@ export default function SessionsBrowser({
 
                 <div className="text-2xl font-semibold">{s.title}</div>
 
-                {typeof s.signup_count === "number" && (
-                  <div className="text-base">
-                    <span className="font-semibold">{s.signup_count}</span>{" "}
-                    comics signed up
-                  </div>
-                )}
+                <div className="text-base">
+                  <span className="font-semibold">{signupCount}</span> comics
+                  signed up
+                </div>
 
                 <div className="text-sm opacity-70">
-                  Rooms are split manually with breakout rooms as needed.
+                  Breakout rooms are created manually as needed.
                 </div>
               </div>
 
               <div className="shrink-0">
-                {isFree ? (
+                {!userId ? (
+                  <a
+                    href="/sign-in"
+                    className="inline-block bg-black text-white px-4 py-3 rounded-lg"
+                  >
+                    Sign in to reserve
+                  </a>
+                ) : isJoined ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="bg-gray-200 text-gray-700 px-4 py-3 rounded-lg cursor-default"
+                  >
+                    Reserved
+                  </button>
+                ) : canReserveDirectly ? (
                   <form action={formAction}>
                     <input type="hidden" name="sessionId" value={s.id} />
                     <button className="bg-black text-white px-4 py-3 rounded-lg">
-                      Reserve spot
+                      {isFree ? "Reserve spot (Free)" : "Reserve spot"}
                     </button>
                   </form>
                 ) : (

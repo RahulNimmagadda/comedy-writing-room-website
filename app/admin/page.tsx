@@ -12,6 +12,12 @@ function isAdmin(userId: string | null | undefined) {
     .includes(userId);
 }
 
+function dollarsToCents(value: FormDataEntryValue | null) {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round(n * 100);
+}
+
 export default async function AdminPage() {
   const { userId } = auth();
   if (!isAdmin(userId)) redirect("/");
@@ -19,15 +25,19 @@ export default async function AdminPage() {
   async function createSession(formData: FormData) {
     "use server";
 
-    const title = String(formData.get("title") || "");
+    const title = String(formData.get("title") || "").trim();
     const startsAtLocal = String(formData.get("starts_at") || "");
     const zoomLink = String(formData.get("zoom_link") || "").trim();
+    const priceCents = dollarsToCents(formData.get("price"));
 
+    if (!title) throw new Error("Missing title");
     if (!startsAtLocal) throw new Error("Missing start time");
 
     const dt = DateTime.fromFormat(startsAtLocal, "yyyy-MM-dd'T'HH:mm", {
       zone: "America/New_York",
     });
+
+    if (!dt.isValid) throw new Error("Invalid start time");
 
     const startsAtUtc = dt.toUTC().toISO();
 
@@ -37,7 +47,7 @@ export default async function AdminPage() {
       duration_minutes: 60,
       seat_cap: 9999,
       status: "scheduled",
-      price_cents: 100,
+      price_cents: priceCents,
       zoom_link: zoomLink || null,
     });
 
@@ -47,16 +57,21 @@ export default async function AdminPage() {
   async function updateSession(formData: FormData) {
     "use server";
 
-    const id = String(formData.get("id"));
-    const title = String(formData.get("title") || "");
+    const id = String(formData.get("id") || "");
+    const title = String(formData.get("title") || "").trim();
     const startsAtLocal = String(formData.get("starts_at") || "");
     const zoomLink = String(formData.get("zoom_link") || "").trim();
+    const priceCents = dollarsToCents(formData.get("price"));
 
-    if (!id || !startsAtLocal) throw new Error("Missing fields");
+    if (!id) throw new Error("Missing id");
+    if (!title) throw new Error("Missing title");
+    if (!startsAtLocal) throw new Error("Missing start time");
 
     const dt = DateTime.fromFormat(startsAtLocal, "yyyy-MM-dd'T'HH:mm", {
       zone: "America/New_York",
     });
+
+    if (!dt.isValid) throw new Error("Invalid start time");
 
     const startsAtUtc = dt.toUTC().toISO();
 
@@ -66,6 +81,7 @@ export default async function AdminPage() {
         title,
         starts_at: startsAtUtc,
         zoom_link: zoomLink || null,
+        price_cents: priceCents,
       })
       .eq("id", id);
 
@@ -104,6 +120,16 @@ export default async function AdminPage() {
             className="border p-2 w-full"
           />
 
+          <select
+            name="price"
+            defaultValue="1"
+            className="border p-2 w-full bg-white"
+          >
+            <option value="0">Free</option>
+            <option value="1">Community ($1)</option>
+            <option value="5">Pro ($5)</option>
+          </select>
+
           <button className="bg-black text-white p-2 rounded w-full">
             Create
           </button>
@@ -124,6 +150,8 @@ export default async function AdminPage() {
             >
               <input type="hidden" name="id" value={s.id} />
 
+              <div className="font-semibold">{s.title}</div>
+
               <input
                 name="title"
                 defaultValue={s.title}
@@ -142,6 +170,16 @@ export default async function AdminPage() {
                 defaultValue={s.zoom_link || ""}
                 className="border p-2 w-full"
               />
+
+              <select
+                name="price"
+                defaultValue={String((s.price_cents ?? 0) / 100)}
+                className="border p-2 w-full bg-white"
+              >
+                <option value="0">Free</option>
+                <option value="1">Community ($1)</option>
+                <option value="5">Pro ($5)</option>
+              </select>
 
               <div className="flex justify-between items-center">
                 <div className="text-sm opacity-60">
