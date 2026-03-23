@@ -119,7 +119,7 @@ export default function SessionsBrowser({
                     </button>
                   </form>
                 ) : (
-                  <PayButton sessionId={s.id} />
+                  <PayButton sessionId={s.id} priceCents={s.price_cents} />
                 )}
               </div>
             </div>
