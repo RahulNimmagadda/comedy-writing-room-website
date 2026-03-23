@@ -30,6 +30,13 @@ function sessionType(priceCents: number) {
   return "Community";
 }
 
+async function joinSessionAction(
+  _state: JoinSessionResult | null,
+  formData: FormData
+): Promise<JoinSessionResult> {
+  return joinSession(formData);
+}
+
 export default function SessionsBrowser({
   sessions,
   seatsBySession = {},
@@ -43,10 +50,7 @@ export default function SessionsBrowser({
   userId?: string | null;
   isAdmin?: boolean;
 }) {
-  const [state, formAction] = useActionState<JoinSessionResult | null, FormData>(
-    joinSession,
-    null
-  );
+  const [state, formAction] = useActionState(joinSessionAction, null);
 
   return (
     <div className="space-y-4">
