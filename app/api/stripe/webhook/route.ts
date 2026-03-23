@@ -85,6 +85,7 @@ async function enrichBookingAndSendConfirmation(args: {
   clerkUserId: string;
   writingSessionId: string;
   fallbackEmail?: string | null;
+  timezone?: string | null;
 }) {
   const clerkEmail = await getClerkEmail(args.clerkUserId);
   const email = clerkEmail ?? args.fallbackEmail ?? null;
@@ -134,6 +135,7 @@ async function enrichBookingAndSendConfirmation(args: {
     .from("bookings")
     .update({
       ...(email ? { user_email: email } : {}),
+      ...(args.timezone ? { timezone: args.timezone } : {}),
       reminder_24h_at: minusHours(sessionRow.starts_at, 24),
       reminder_1h_at: minusHours(sessionRow.starts_at, 1),
     })
@@ -147,6 +149,7 @@ async function enrichBookingAndSendConfirmation(args: {
         html: confirmationEmailHtml({
           sessionTitle: sessionRow.title,
           startsAtIso: sessionRow.starts_at,
+          timezone: args.timezone ?? null,
         }),
       });
 
@@ -239,6 +242,7 @@ export async function POST(req: Request) {
 
   const clerkUserId = session.metadata?.clerk_user_id;
   const writingSessionId = session.metadata?.writing_session_id;
+  const timezone = session.metadata?.timezone || null;
 
   if (!clerkUserId || !writingSessionId) {
     return NextResponse.json({
@@ -311,6 +315,7 @@ export async function POST(req: Request) {
       clerkUserId,
       writingSessionId,
       fallbackEmail: stripeEmail,
+      timezone,
     });
 
     revalidatePath("/");
@@ -325,6 +330,7 @@ export async function POST(req: Request) {
       clerkUserId,
       writingSessionId,
       fallbackEmail: stripeEmail,
+      timezone,
     });
 
     revalidatePath("/");

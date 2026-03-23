@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { stripe } from "@/lib/stripe";
 
-type Body = { sessionId?: string };
+type Body = { sessionId?: string; timezone?: string };
 
 function getBaseUrl(req: Request) {
   const envUrl =
@@ -31,7 +31,10 @@ export async function POST(req: Request) {
     }
 
     const body = (await req.json()) as Body;
+
     const sessionId = String(body.sessionId ?? "").trim();
+    const timezone = String(body.timezone ?? "").trim(); // 🔥 NEW
+
     if (!sessionId) {
       return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
     }
@@ -50,19 +53,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // ✅ Allow paid signup until 5 minutes after start
     const startsAtMs = new Date(sessionRow.starts_at).getTime();
-    if (!Number.isFinite(startsAtMs)) {
-      return NextResponse.json(
-        { error: "Invalid session start time." },
-        { status: 400 }
-      );
-    }
-
     const LATE_JOIN_GRACE_MS = 5 * 60_000;
-    const latestAllowedPurchaseMs = startsAtMs + LATE_JOIN_GRACE_MS;
 
-    if (Date.now() > latestAllowedPurchaseMs) {
+    if (Date.now() > startsAtMs + LATE_JOIN_GRACE_MS) {
       return NextResponse.json(
         { error: "This session is no longer available." },
         { status: 400 }
@@ -77,19 +71,10 @@ export async function POST(req: Request) {
     }
 
     const priceCents = Number(sessionRow.price_cents);
-    if (!Number.isFinite(priceCents) || priceCents < 0) {
+
+    if (!Number.isFinite(priceCents) || priceCents <= 0) {
       return NextResponse.json(
         { error: "Invalid session price." },
-        { status: 400 }
-      );
-    }
-
-    if (priceCents === 0) {
-      return NextResponse.json(
-        {
-          error:
-            "This session price is $0. If you want free signup, implement a non-Stripe join flow.",
-        },
         { status: 400 }
       );
     }
@@ -110,6 +95,7 @@ export async function POST(req: Request) {
       metadata: {
         clerk_user_id: userId,
         writing_session_id: sessionId,
+        timezone: timezone || "", // 🔥 KEY FIX
       },
 
       line_items: [

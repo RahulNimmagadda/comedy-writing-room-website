@@ -29,8 +29,7 @@ function safeErrorMessage(x: unknown, fallback: string) {
 
 function getClientTimezone(): string {
   try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return typeof tz === "string" ? tz : "";
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   } catch {
     return "";
   }
@@ -72,67 +71,43 @@ export default function PayButton({
     try {
       setLoading(true);
 
-      // ✅ Free sessions: non-Stripe join flow
-      if (isFree) {
-        const tz = getClientTimezone();
+      const tz = getClientTimezone();
 
+      // ✅ Free sessions
+      if (isFree) {
         const res = await fetch(`/sessions/${sessionId}/join`, {
           method: "POST",
           headers: tz ? { "x-timezone": tz } : undefined,
         });
 
-        // If it's not ok, try to read text/json for a useful message.
         if (!res.ok) {
-          let body: unknown = null;
-
-          const ct = res.headers.get("content-type") || "";
-          if (ct.includes("application/json")) {
-            try {
-              body = await res.json();
-            } catch {
-              body = null;
-            }
-          } else {
-            try {
-              body = await res.text();
-            } catch {
-              body = null;
-            }
-          }
-
-          const msg =
-            typeof body === "string"
-              ? body
-              : safeErrorMessage(body, "Failed to reserve spot");
-
-          throw new Error(msg);
+          const body = await res.text();
+          throw new Error(body || "Failed to reserve spot");
         }
 
-        // Refresh to reflect updated booking state.
         window.location.reload();
         return;
       }
 
-      // ✅ Paid sessions: Stripe checkout flow
+      // ✅ Paid sessions (FIX: include timezone)
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sessionId,
+          timezone: tz, // 🔥 KEY FIX
+        }),
       });
 
-      const data = (await res.json()) as unknown;
+      const data = await res.json();
 
-      const url =
-        data && typeof data === "object" && "url" in data
-          ? (data as { url?: unknown }).url
-          : undefined;
-
-      if (!res.ok || typeof url !== "string" || !url) {
-        const msg = safeErrorMessage(data, "Failed to create checkout session");
-        throw new Error(msg);
+      if (!res.ok || !data?.url) {
+        throw new Error(data?.error || "Failed to create checkout session");
       }
 
-      window.location.assign(url);
+      window.location.assign(data.url);
     } catch (e: unknown) {
       alert(safeErrorMessage(e, "Something went wrong"));
     } finally {
