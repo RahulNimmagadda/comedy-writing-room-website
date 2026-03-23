@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import PayButton from "@/components/PayButton";
 import LocalTime from "@/components/LocalTime";
@@ -92,12 +93,12 @@ export default function SessionsBrowser({
 
               <div className="shrink-0">
                 {!userId ? (
-                  <a
+                  <Link
                     href="/sign-in"
                     className="inline-block bg-black text-white px-4 py-3 rounded-lg"
                   >
                     Sign in to reserve
-                  </a>
+                  </Link>
                 ) : isJoined ? (
                   <button
                     type="button"
