@@ -30,6 +30,14 @@ function sessionType(priceCents: number) {
   return "Community";
 }
 
+function getClientTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  } catch {
+    return "";
+  }
+}
+
 async function joinSessionAction(
   _state: JoinSessionResult | null,
   formData: FormData
@@ -64,8 +72,11 @@ export default function SessionsBrowser({
 }) {
   const [state, formAction] = useActionState(joinSessionAction, null);
   const [nowMs, setNowMs] = useState<number | null>(null);
+  const [timezone, setTimezone] = useState("");
 
   useEffect(() => {
+    setTimezone(getClientTimezone());
+
     const updateNow = () => setNowMs(Date.now());
 
     updateNow();
@@ -191,6 +202,7 @@ export default function SessionsBrowser({
                 ) : canReserveDirectly ? (
                   <form action={formAction}>
                     <input type="hidden" name="sessionId" value={s.id} />
+                    <input type="hidden" name="timezone" value={timezone} />
                     <button className="bg-black text-white px-4 py-3 rounded-lg">
                       {isFree
                         ? "Reserve spot (Free)"

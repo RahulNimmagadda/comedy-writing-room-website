@@ -5,24 +5,16 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
  * Everything else is public by default
  */
 const isProtectedRoute = createRouteMatcher([
-  // User account pages
   "/account(.*)",
   "/my-sessions(.*)",
-
-  // Admin area
   "/admin(.*)",
-
-  // Session join actions (page-based joins if any)
-  "/join(.*)",
-
-  // Protected API routes
+  "/sessions/(.*)/join(.*)",
   "/api/sessions/(.*)/join",
   "/api/admin/(.*)",
 ]);
 
 /**
- * Always-public routes (never block)
- * Keeps cron/webhooks clean and avoids Clerk token parsing weirdness.
+ * Always-public routes
  */
 const isAlwaysPublicRoute = createRouteMatcher([
   "/api/cron(.*)",
@@ -39,9 +31,7 @@ export default clerkMiddleware((auth, req) => {
 
 export const config = {
   matcher: [
-    // Match all routes except static files
     "/((?!_next|.*\\..*).*)",
-    // Always run for API routes
     "/api/(.*)",
   ],
 };

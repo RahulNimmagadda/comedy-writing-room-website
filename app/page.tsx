@@ -9,7 +9,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 type SessionRow = {
   id: string;
   title: string;
-  starts_at: string; // UTC ISO in DB
+  starts_at: string;
   duration_minutes: number;
   seat_cap: number;
   status: string;
@@ -29,6 +29,7 @@ export default async function HomePage() {
   const { data: sessions, error: sessionsError } = await supabaseAdmin
     .from("sessions")
     .select("id,title,starts_at,duration_minutes,seat_cap,status,price_cents")
+    .eq("status", "scheduled")
     .order("starts_at", { ascending: true });
 
   if (sessionsError) {

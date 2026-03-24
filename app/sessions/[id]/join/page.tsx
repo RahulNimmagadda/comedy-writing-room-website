@@ -73,6 +73,52 @@ export default async function SessionJoinPage({
     );
   }
 
+  const { joinOpensAt, reserveClosesAt, end } = getSessionTiming(
+    session.starts_at,
+    session.duration_minutes
+  );
+  const now = Date.now();
+
+  if (now < joinOpensAt) {
+    return (
+      <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
+        <h1 className="text-2xl font-bold">Room not open yet</h1>
+        <p className="opacity-70">
+          Join Room becomes available 5 minutes before the session starts.
+        </p>
+        <Link className="underline" href="/">
+          Back to sessions
+        </Link>
+      </main>
+    );
+  }
+
+  if (now > reserveClosesAt && now <= end) {
+    return (
+      <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
+        <h1 className="text-2xl font-bold">Session in progress</h1>
+        <p className="opacity-70">
+          Joining is only available through 5 minutes after the session starts.
+        </p>
+        <Link className="underline" href="/">
+          Back to sessions
+        </Link>
+      </main>
+    );
+  }
+
+  if (now > end) {
+    return (
+      <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
+        <h1 className="text-2xl font-bold">Session Ended</h1>
+        <p className="opacity-70">This session has already ended.</p>
+        <Link className="underline" href="/">
+          Back to sessions
+        </Link>
+      </main>
+    );
+  }
+
   async function joinNow(formData: FormData) {
     "use server";
 
@@ -112,7 +158,7 @@ export default async function SessionJoinPage({
     const now = Date.now();
 
     if (now < joinOpensAt || now > reserveClosesAt || now > end) {
-      redirect(`/`);
+      redirect(`/sessions/${sessionId}/join`);
     }
 
     const tz = String(formData.get("timezone") || "").trim();
@@ -134,9 +180,7 @@ export default async function SessionJoinPage({
   return (
     <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-4">
       <h1 className="text-2xl font-bold">{session.title}</h1>
-      <p className="opacity-70">
-        If the room is open, clicking below will take you in.
-      </p>
+      <p className="opacity-70">Click below to join the room.</p>
 
       <form action={joinNow} className="space-y-3">
         <TimezoneField />
