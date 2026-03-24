@@ -17,7 +17,7 @@ type SessionRow = {
 };
 
 export default async function HomePage() {
-  const { userId } = auth();
+  const { userId } = await auth();
 
   const isAdmin =
     !!userId &&
@@ -53,7 +53,14 @@ export default async function HomePage() {
     );
   }
 
-  const typedSessions = (sessions ?? []) as SessionRow[];
+  const nowMs = Date.now();
+
+  const typedSessions = ((sessions ?? []) as SessionRow[]).filter((s) => {
+    const startMs = new Date(s.starts_at).getTime();
+    const endMs = startMs + s.duration_minutes * 60_000;
+    return endMs > nowMs;
+  });
+
   const sessionIds = typedSessions.map((s) => s.id);
 
   const seatsBySession: Record<string, number> = {};
