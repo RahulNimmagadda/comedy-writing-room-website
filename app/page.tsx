@@ -26,14 +26,9 @@ export default async function HomePage() {
       .includes(userId) ??
       false);
 
-  // Show upcoming sessions plus sessions that started within the last 5 minutes
-  // so users can still reserve during the grace window.
-  const windowStartIso = new Date(Date.now() - 5 * 60_000).toISOString();
-
   const { data: sessions, error: sessionsError } = await supabaseAdmin
     .from("sessions")
     .select("id,title,starts_at,duration_minutes,seat_cap,status,price_cents")
-    .gte("starts_at", windowStartIso)
     .order("starts_at", { ascending: true });
 
   if (sessionsError) {

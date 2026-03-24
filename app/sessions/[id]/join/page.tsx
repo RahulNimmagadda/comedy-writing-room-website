@@ -52,53 +52,6 @@ export default async function SessionJoinPage({
     );
   }
 
-  const { end, joinOpensAt, reserveClosesAt } = getSessionTiming(
-    session.starts_at,
-    session.duration_minutes
-  );
-  const now = Date.now();
-
-  if (now > end) {
-    return (
-      <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
-        <h1 className="text-2xl font-bold">Session Ended</h1>
-        <p className="opacity-70">This session has already ended.</p>
-        <Link className="underline" href="/">
-          Back to sessions
-        </Link>
-      </main>
-    );
-  }
-
-  if (now < joinOpensAt) {
-    return (
-      <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
-        <h1 className="text-2xl font-bold">Room not open yet</h1>
-        <p className="opacity-70">
-          Rooms open 5 minutes before the session starts.
-        </p>
-        <Link className="underline" href="/">
-          Back to sessions
-        </Link>
-      </main>
-    );
-  }
-
-  if (now > reserveClosesAt) {
-    return (
-      <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
-        <h1 className="text-2xl font-bold">Session in progress</h1>
-        <p className="opacity-70">
-          Joining from the session page is only available until 5 minutes after
-          the session starts.
-        </p>
-        <Link className="underline" href="/">
-          Back to sessions
-        </Link>
-      </main>
-    );
-  }
-
   const { data: booking } = await supabaseAdmin
     .from("bookings")
     .select("id")
@@ -141,16 +94,6 @@ export default async function SessionJoinPage({
       redirect("/");
     }
 
-    const { joinOpensAt, reserveClosesAt, end } = getSessionTiming(
-      currentSession.starts_at,
-      currentSession.duration_minutes
-    );
-    const now = Date.now();
-
-    if (now < joinOpensAt || now > reserveClosesAt || now > end) {
-      redirect(`/sessions/${sessionId}/join`);
-    }
-
     const { data: b } = await supabaseAdmin
       .from("bookings")
       .select("id")
@@ -160,6 +103,16 @@ export default async function SessionJoinPage({
 
     if (!b) {
       redirect(`/sessions/${sessionId}/join`);
+    }
+
+    const { joinOpensAt, reserveClosesAt, end } = getSessionTiming(
+      currentSession.starts_at,
+      currentSession.duration_minutes
+    );
+    const now = Date.now();
+
+    if (now < joinOpensAt || now > reserveClosesAt || now > end) {
+      redirect(`/`);
     }
 
     const tz = String(formData.get("timezone") || "").trim();
@@ -181,7 +134,9 @@ export default async function SessionJoinPage({
   return (
     <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-4">
       <h1 className="text-2xl font-bold">{session.title}</h1>
-      <p className="opacity-70">Click below to join the room.</p>
+      <p className="opacity-70">
+        If the room is open, clicking below will take you in.
+      </p>
 
       <form action={joinNow} className="space-y-3">
         <TimezoneField />

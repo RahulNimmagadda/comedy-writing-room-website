@@ -63,12 +63,13 @@ export default function SessionsBrowser({
   isAdmin?: boolean;
 }) {
   const [state, formAction] = useActionState(joinSessionAction, null);
-  const [nowMs, setNowMs] = useState(Date.now());
+  const [nowMs, setNowMs] = useState<number | null>(null);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setNowMs(Date.now());
-    }, 15_000);
+    const updateNow = () => setNowMs(Date.now());
+
+    updateNow();
+    const interval = setInterval(updateNow, 15_000);
 
     return () => clearInterval(interval);
   }, []);
@@ -89,11 +90,16 @@ export default function SessionsBrowser({
           s.duration_minutes
         );
 
-        const isEnded = nowMs > endMs;
-        const isInProgress = nowMs > reserveClosesAtMs && nowMs <= endMs;
+        const hasNow = nowMs !== null;
+        const isEnded = hasNow && nowMs > endMs;
+        const isInProgress =
+          hasNow && nowMs > reserveClosesAtMs && nowMs <= endMs;
         const canJoinNow =
-          isJoined && nowMs >= joinOpensAtMs && nowMs <= reserveClosesAtMs;
-        const canReserveNow = nowMs <= reserveClosesAtMs;
+          hasNow &&
+          isJoined &&
+          nowMs >= joinOpensAtMs &&
+          nowMs <= reserveClosesAtMs;
+        const canReserveNow = !hasNow || nowMs <= reserveClosesAtMs;
 
         return (
           <div key={s.id} className="border rounded-2xl p-6">
