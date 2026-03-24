@@ -32,7 +32,9 @@ function sessionType(priceCents: number) {
   return "Community";
 }
 
-function sessionTypeFilterValue(priceCents: number): Exclude<TypeFilter, "all"> {
+function sessionTypeFilterValue(
+  priceCents: number
+): Exclude<TypeFilter, "all"> {
   return priceCents >= 450 ? "pro" : "community";
 }
 
@@ -68,6 +70,28 @@ function getServerNowSnapshot() {
   return 0;
 }
 
+function formatSelectedDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  const localDate = new Date(year, (month ?? 1) - 1, day ?? 1);
+
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(localDate);
+}
+
+function isSameLocalDay(isoString: string, selectedDate: string) {
+  const sessionDate = new Date(isoString);
+  const [year, month, day] = selectedDate.split("-").map(Number);
+
+  return (
+    sessionDate.getFullYear() === year &&
+    sessionDate.getMonth() === month - 1 &&
+    sessionDate.getDate() === day
+  );
+}
+
 export default function SessionsBrowser({
   sessions,
   seatsBySession = {},
@@ -90,6 +114,7 @@ export default function SessionsBrowser({
 
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [dateFilter, setDateFilter] = useState("");
 
   const joinedSet = useMemo(() => new Set(joinedSessionIds), [joinedSessionIds]);
 
@@ -105,17 +130,21 @@ export default function SessionsBrowser({
         typeFilter === "all" ||
         sessionTypeFilterValue(s.price_cents) === typeFilter;
 
-      return matchesQuery && matchesType;
-    });
-  }, [sessions, query, typeFilter]);
+      const matchesDate =
+        dateFilter.length === 0 || isSameLocalDay(s.starts_at, dateFilter);
 
-  const hasActiveFilters = query.trim().length > 0 || typeFilter !== "all";
+      return matchesQuery && matchesType && matchesDate;
+    });
+  }, [sessions, query, typeFilter, dateFilter]);
+
+  const hasActiveFilters =
+    query.trim().length > 0 || typeFilter !== "all" || dateFilter.length > 0;
 
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border border-amber-200/80 bg-amber-50/80 p-4 shadow-sm sm:p-5">
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="text-sm font-semibold text-amber-950">
                 🔎 Filter sessions
@@ -132,6 +161,7 @@ export default function SessionsBrowser({
                 onClick={() => {
                   setQuery("");
                   setTypeFilter("all");
+                  setDateFilter("");
                 }}
                 className="inline-flex items-center justify-center rounded-full border border-amber-300 bg-white/80 px-3 py-1.5 text-sm font-medium text-amber-950 transition hover:bg-white"
               >
@@ -140,7 +170,7 @@ export default function SessionsBrowser({
             )}
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <input
               type="text"
               value={query}
@@ -187,16 +217,50 @@ export default function SessionsBrowser({
               </button>
             </div>
           </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-xs font-medium uppercase tracking-wide text-amber-900/80">
+              📅 Date
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="inline-flex cursor-pointer items-center rounded-full border border-amber-300 bg-white/80 px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:bg-white">
+                <span>Select date</span>
+                <input
+                  type="date"
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="ml-2 w-[1.25rem] cursor-pointer border-0 bg-transparent p-0 text-transparent outline-none"
+                  aria-label="Select date"
+                />
+              </label>
+
+              {dateFilter.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setDateFilter("")}
+                  className="inline-flex items-center gap-2 rounded-full border border-zinc-900 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-zinc-800"
+                >
+                  <span>{formatSelectedDate(dateFilter)}</span>
+                  <span aria-hidden>✕</span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
       {filteredSessions.length === 0 ? (
         <div className="rounded-2xl border border-zinc-200/70 bg-white/70 px-6 py-8 text-center shadow-sm">
           <div className="text-base font-medium text-zinc-900">
-            No sessions match those filters.
+            {dateFilter.length > 0
+              ? "No sessions on this date."
+              : "No sessions match those filters."}
           </div>
           <div className="mt-1 text-sm text-zinc-600">
-            Try clearing filters or searching for something else.
+            {dateFilter.length > 0
+              ? "Try another day or clear filters."
+              : "Try clearing filters or searching for something else."}
           </div>
         </div>
       ) : (
@@ -221,7 +285,9 @@ export default function SessionsBrowser({
             nowMs <= reserveClosesAtMs;
           const canReserveNow = !hasLiveNow || nowMs <= reserveClosesAtMs;
           const isHappeningSoon =
-            hasLiveNow && startMs > nowMs && startMs - nowMs <= 24 * 60 * 60_000;
+            hasLiveNow &&
+            startMs > nowMs &&
+            startMs - nowMs <= 24 * 60 * 60_000;
 
           return (
             <div
