@@ -20,8 +20,9 @@ function safeErrorMessage(x: unknown, fallback: string) {
     const maybeError = anyX.error;
     const maybeMessage = anyX.message;
     if (typeof maybeError === "string" && maybeError.trim()) return maybeError;
-    if (typeof maybeMessage === "string" && maybeMessage.trim())
+    if (typeof maybeMessage === "string" && maybeMessage.trim()) {
       return maybeMessage;
+    }
   }
 
   return fallback;
@@ -47,14 +48,11 @@ export default function PayButton({
   const [loading, setLoading] = useState(false);
   const { isSignedIn } = useAuth();
 
-  const isFree = Number.isFinite(priceCents) && priceCents <= 0;
-
   const label = useMemo(() => {
     if (disabled) return "Full";
     if (loading) return "Working…";
-    if (isFree) return "Reserve spot (Free)";
     return `Pay ${formatUsd(priceCents)} to reserve spot`;
-  }, [disabled, loading, isFree, priceCents]);
+  }, [disabled, loading, priceCents]);
 
   const ensureSignedIn = () => {
     if (!isSignedIn) {
@@ -73,23 +71,6 @@ export default function PayButton({
 
       const tz = getClientTimezone();
 
-      // ✅ Free sessions
-      if (isFree) {
-        const res = await fetch(`/sessions/${sessionId}/join`, {
-          method: "POST",
-          headers: tz ? { "x-timezone": tz } : undefined,
-        });
-
-        if (!res.ok) {
-          const body = await res.text();
-          throw new Error(body || "Failed to reserve spot");
-        }
-
-        window.location.reload();
-        return;
-      }
-
-      // ✅ Paid sessions (FIX: include timezone)
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: {
@@ -97,7 +78,7 @@ export default function PayButton({
         },
         body: JSON.stringify({
           sessionId,
-          timezone: tz, // 🔥 KEY FIX
+          timezone: tz,
         }),
       });
 
