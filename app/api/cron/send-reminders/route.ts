@@ -1,7 +1,7 @@
 // app/api/cron/send-reminders/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { reminderEmailHtml, sendEmail } from "@/lib/email";
+import { formatInTimezone, reminderEmailHtml, sendEmail } from "@/lib/email";
 
 function getProvidedSecret(req: Request) {
   const x = req.headers.get("x-cron-secret");
@@ -176,9 +176,10 @@ async function handler(req: Request) {
     }
 
     try {
+      const whenLocal = formatInTimezone(s.starts_at, b.timezone);
       const subject =
         item.label === "24h"
-          ? `Reminder: ${s.title} (tomorrow)`
+          ? `Reminder: ${s.title} (${whenLocal})`
           : `Reminder: ${s.title} (starting soon)`;
 
       await sendEmail({

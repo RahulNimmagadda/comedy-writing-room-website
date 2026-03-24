@@ -136,7 +136,9 @@ export function reminderEmailHtml(args: {
   const url = siteUrl();
 
   const headline =
-    args.label === "24h" ? "Reminder ⏰ Tomorrow" : "Reminder ⏰ Starting soon";
+    args.label === "24h"
+      ? `Reminder ⏰ ${whenLocal}`
+      : "Reminder ⏰ Starting soon";
 
   return `
   <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height: 1.5;">

@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useActionState,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import PayButton from "@/components/PayButton";
 import LocalTime from "@/components/LocalTime";
 import { joinSession, type JoinSessionResult } from "@/app/sessions/actions";
@@ -139,6 +145,15 @@ export default function SessionsBrowser({
     });
   }, [sessions, query, typeFilter, dateFilter]);
 
+  const visibleSessions = useMemo(() => {
+    if (nowMs <= 0) return filteredSessions;
+
+    return filteredSessions.filter((s) => {
+      const { endMs } = getSessionTiming(s.starts_at, s.duration_minutes);
+      return nowMs <= endMs;
+    });
+  }, [filteredSessions, nowMs]);
+
   const hasActiveFilters =
     query.trim().length > 0 || typeFilter !== "all" || dateFilter.length > 0;
 
@@ -203,7 +218,9 @@ export default function SessionsBrowser({
                     : "border-amber-300 bg-white/80 text-zinc-800 hover:bg-white"
                 }`}
               >
-                <span>{dateFilter ? formatSelectedDate(dateFilter) : "Select date"}</span>
+                <span>
+                  {dateFilter ? formatSelectedDate(dateFilter) : "Select date"}
+                </span>
 
                 {dateFilter ? (
                   <span
@@ -284,12 +301,12 @@ export default function SessionsBrowser({
         </div>
       </div>
 
-      {filteredSessions.length === 0 ? (
+      {visibleSessions.length === 0 ? (
         <div className="rounded-2xl border border-zinc-200/70 bg-white/70 px-6 py-8 text-center shadow-sm">
           <div className="text-base font-medium text-zinc-900">
             {dateFilter.length > 0
               ? "No sessions on this date."
-              : "No sessions match those filters."}
+              : "No upcoming sessions match those filters."}
           </div>
           <div className="mt-1 text-sm text-zinc-600">
             {dateFilter.length > 0
@@ -298,7 +315,7 @@ export default function SessionsBrowser({
           </div>
         </div>
       ) : (
-        filteredSessions.map((s) => {
+        visibleSessions.map((s) => {
           const type = sessionType(s.price_cents);
           const signupCount = seatsBySession[s.id] ?? 0;
           const isFree = (s.price_cents ?? 0) <= 0;
@@ -309,7 +326,6 @@ export default function SessionsBrowser({
             getSessionTiming(s.starts_at, s.duration_minutes);
 
           const hasLiveNow = nowMs > 0;
-          const isEnded = hasLiveNow && nowMs > endMs;
           const isInProgress =
             hasLiveNow && nowMs > reserveClosesAtMs && nowMs <= endMs;
           const canJoinNow =
@@ -371,7 +387,7 @@ export default function SessionsBrowser({
                     Breakout rooms are created manually as needed.
                   </div>
 
-                  {isJoined && !canJoinNow && !isInProgress && !isEnded && (
+                  {isJoined && !canJoinNow && !isInProgress && (
                     <div className="text-sm text-zinc-500">
                       Join Room becomes available 5 minutes before start.
                     </div>
@@ -379,15 +395,7 @@ export default function SessionsBrowser({
                 </div>
 
                 <div className="shrink-0">
-                  {isEnded ? (
-                    <button
-                      type="button"
-                      disabled
-                      className="cursor-default rounded-xl bg-gray-200 px-4 py-3 text-gray-700"
-                    >
-                      Session Ended
-                    </button>
-                  ) : isInProgress ? (
+                  {isInProgress ? (
                     <button
                       type="button"
                       disabled
