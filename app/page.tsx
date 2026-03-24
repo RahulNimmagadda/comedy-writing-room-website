@@ -30,6 +30,7 @@ export default async function HomePage() {
     .from("sessions")
     .select("id,title,starts_at,duration_minutes,seat_cap,status,price_cents")
     .eq("status", "scheduled")
+    .gte("starts_at", new Date().toISOString())
     .order("starts_at", { ascending: true });
 
   if (sessionsError) {
@@ -53,14 +54,7 @@ export default async function HomePage() {
     );
   }
 
-  const nowMs = Date.now();
-
-  const typedSessions = ((sessions ?? []) as SessionRow[]).filter((s) => {
-    const startMs = new Date(s.starts_at).getTime();
-    const endMs = startMs + s.duration_minutes * 60_000;
-    return endMs > nowMs;
-  });
-
+  const typedSessions = (sessions ?? []) as SessionRow[];
   const sessionIds = typedSessions.map((s) => s.id);
 
   const seatsBySession: Record<string, number> = {};
