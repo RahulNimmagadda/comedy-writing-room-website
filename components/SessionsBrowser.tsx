@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useMemo, useSyncExternalStore } from "react";
 import PayButton from "@/components/PayButton";
 import LocalTime from "@/components/LocalTime";
 import { joinSession, type JoinSessionResult } from "@/app/sessions/actions";
@@ -30,14 +30,6 @@ function sessionType(priceCents: number) {
   return "Community";
 }
 
-function getClientTimezone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-  } catch {
-    return "";
-  }
-}
-
 async function joinSessionAction(
   _state: JoinSessionResult | null,
   formData: FormData
@@ -57,6 +49,19 @@ function getSessionTiming(startsAtIso: string, durationMinutes: number) {
   };
 }
 
+function subscribeNow(callback: () => void) {
+  const interval = setInterval(callback, 15_000);
+  return () => clearInterval(interval);
+}
+
+function getNowSnapshot() {
+  return Date.now();
+}
+
+function getServerNowSnapshot() {
+  return 0;
+}
+
 export default function SessionsBrowser({
   sessions,
   seatsBySession = {},
@@ -71,19 +76,11 @@ export default function SessionsBrowser({
   isAdmin?: boolean;
 }) {
   const [state, formAction] = useActionState(joinSessionAction, null);
-  const [nowMs, setNowMs] = useState<number | null>(null);
-  const [timezone, setTimezone] = useState("");
-
-  useEffect(() => {
-    setTimezone(getClientTimezone());
-
-    const updateNow = () => setNowMs(Date.now());
-
-    updateNow();
-    const interval = setInterval(updateNow, 15_000);
-
-    return () => clearInterval(interval);
-  }, []);
+  const nowMs = useSyncExternalStore(
+    subscribeNow,
+    getNowSnapshot,
+    getServerNowSnapshot
+  );
 
   const joinedSet = useMemo(() => new Set(joinedSessionIds), [joinedSessionIds]);
 
@@ -101,16 +98,16 @@ export default function SessionsBrowser({
           s.duration_minutes
         );
 
-        const hasNow = nowMs !== null;
-        const isEnded = hasNow && nowMs > endMs;
+        const hasLiveNow = nowMs > 0;
+        const isEnded = hasLiveNow && nowMs > endMs;
         const isInProgress =
-          hasNow && nowMs > reserveClosesAtMs && nowMs <= endMs;
+          hasLiveNow && nowMs > reserveClosesAtMs && nowMs <= endMs;
         const canJoinNow =
-          hasNow &&
+          hasLiveNow &&
           isJoined &&
           nowMs >= joinOpensAtMs &&
           nowMs <= reserveClosesAtMs;
-        const canReserveNow = !hasNow || nowMs <= reserveClosesAtMs;
+        const canReserveNow = !hasLiveNow || nowMs <= reserveClosesAtMs;
 
         return (
           <div key={s.id} className="border rounded-2xl p-6">
@@ -202,7 +199,6 @@ export default function SessionsBrowser({
                 ) : canReserveDirectly ? (
                   <form action={formAction}>
                     <input type="hidden" name="sessionId" value={s.id} />
-                    <input type="hidden" name="timezone" value={timezone} />
                     <button className="bg-black text-white px-4 py-3 rounded-lg">
                       {isFree
                         ? "Reserve spot (Free)"

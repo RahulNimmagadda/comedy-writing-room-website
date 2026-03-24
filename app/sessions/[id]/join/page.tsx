@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import TimezoneField from "@/components/TimezoneField";
+import JoinRoomGate from "@/components/JoinRoomGate";
 
 function getSessionTiming(startsAtIso: string, durationMinutes: number) {
   const start = new Date(startsAtIso).getTime();
@@ -73,52 +74,6 @@ export default async function SessionJoinPage({
     );
   }
 
-  const { joinOpensAt, reserveClosesAt, end } = getSessionTiming(
-    session.starts_at,
-    session.duration_minutes
-  );
-  const now = Date.now();
-
-  if (now < joinOpensAt) {
-    return (
-      <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
-        <h1 className="text-2xl font-bold">Room not open yet</h1>
-        <p className="opacity-70">
-          Join Room becomes available 5 minutes before the session starts.
-        </p>
-        <Link className="underline" href="/">
-          Back to sessions
-        </Link>
-      </main>
-    );
-  }
-
-  if (now > reserveClosesAt && now <= end) {
-    return (
-      <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
-        <h1 className="text-2xl font-bold">Session in progress</h1>
-        <p className="opacity-70">
-          Joining is only available through 5 minutes after the session starts.
-        </p>
-        <Link className="underline" href="/">
-          Back to sessions
-        </Link>
-      </main>
-    );
-  }
-
-  if (now > end) {
-    return (
-      <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
-        <h1 className="text-2xl font-bold">Session Ended</h1>
-        <p className="opacity-70">This session has already ended.</p>
-        <Link className="underline" href="/">
-          Back to sessions
-        </Link>
-      </main>
-    );
-  }
-
   async function joinNow(formData: FormData) {
     "use server";
 
@@ -178,20 +133,26 @@ export default async function SessionJoinPage({
   }
 
   return (
-    <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-4">
-      <h1 className="text-2xl font-bold">{session.title}</h1>
-      <p className="opacity-70">Click below to join the room.</p>
+    <JoinRoomGate
+      title={session.title}
+      startsAt={session.starts_at}
+      durationMinutes={session.duration_minutes}
+    >
+      <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-4">
+        <h1 className="text-2xl font-bold">{session.title}</h1>
+        <p className="opacity-70">Click below to join the room.</p>
 
-      <form action={joinNow} className="space-y-3">
-        <TimezoneField />
-        <button className="px-4 py-2 rounded-xl bg-black text-white font-semibold">
-          Join now →
-        </button>
-      </form>
+        <form action={joinNow} className="space-y-3">
+          <TimezoneField />
+          <button className="px-4 py-2 rounded-xl bg-black text-white font-semibold">
+            Join now →
+          </button>
+        </form>
 
-      <Link className="underline" href="/">
-        Back to sessions
-      </Link>
-    </main>
+        <Link className="underline" href="/">
+          Back to sessions
+        </Link>
+      </main>
+    </JoinRoomGate>
   );
 }
