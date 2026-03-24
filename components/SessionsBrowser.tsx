@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useMemo, useState, useSyncExternalStore } from "react";
+import { useActionState, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import PayButton from "@/components/PayButton";
 import LocalTime from "@/components/LocalTime";
 import { joinSession, type JoinSessionResult } from "@/app/sessions/actions";
@@ -116,6 +116,8 @@ export default function SessionsBrowser({
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [dateFilter, setDateFilter] = useState("");
 
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
+
   const joinedSet = useMemo(() => new Set(joinedSessionIds), [joinedSessionIds]);
 
   const filteredSessions = useMemo(() => {
@@ -139,6 +141,18 @@ export default function SessionsBrowser({
 
   const hasActiveFilters =
     query.trim().length > 0 || typeFilter !== "all" || dateFilter.length > 0;
+
+  const openDatePicker = () => {
+    const input = dateInputRef.current;
+    if (!input) return;
+
+    if (typeof input.showPicker === "function") {
+      input.showPicker();
+      return;
+    }
+
+    input.click();
+  };
 
   return (
     <div className="space-y-5">
@@ -170,7 +184,7 @@ export default function SessionsBrowser({
             )}
           </div>
 
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="flex flex-col gap-3 md:grid md:grid-cols-[minmax(0,1fr)_220px] md:items-center">
             <input
               type="text"
               value={query}
@@ -179,73 +193,93 @@ export default function SessionsBrowser({
               className="w-full rounded-xl border border-amber-200 bg-white/90 px-4 py-2.5 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-amber-400"
             />
 
-            <div className="flex flex-wrap gap-2">
+            <div className="relative w-full">
               <button
                 type="button"
-                onClick={() => setTypeFilter("all")}
-                className={`inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-                  typeFilter === "all"
-                    ? "border-zinc-900 bg-zinc-900 text-white"
+                onClick={openDatePicker}
+                className={`flex w-full items-center justify-between rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
+                  dateFilter.length > 0
+                    ? "border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800"
                     : "border-amber-300 bg-white/80 text-zinc-800 hover:bg-white"
                 }`}
               >
-                All
+                <span>{dateFilter ? formatSelectedDate(dateFilter) : "Select date"}</span>
+
+                {dateFilter ? (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDateFilter("");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDateFilter("");
+                      }
+                    }}
+                    className="ml-3 inline-flex h-5 w-5 items-center justify-center rounded-full text-xs"
+                    aria-label="Clear selected date"
+                  >
+                    ✕
+                  </span>
+                ) : (
+                  <span aria-hidden className="ml-3">
+                    📅
+                  </span>
+                )}
               </button>
 
-              <button
-                type="button"
-                onClick={() => setTypeFilter("community")}
-                className={`inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-                  typeFilter === "community"
-                    ? "border-zinc-900 bg-zinc-900 text-white"
-                    : "border-amber-300 bg-white/80 text-zinc-800 hover:bg-white"
-                }`}
-              >
-                Community
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTypeFilter("pro")}
-                className={`inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-                  typeFilter === "pro"
-                    ? "border-zinc-900 bg-zinc-900 text-white"
-                    : "border-amber-300 bg-white/80 text-zinc-800 hover:bg-white"
-                }`}
-              >
-                Pro
-              </button>
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="pointer-events-none absolute inset-0 h-full w-full opacity-0"
+                tabIndex={-1}
+                aria-hidden="true"
+              />
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-xs font-medium uppercase tracking-wide text-amber-900/80">
-              📅 Date
-            </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setTypeFilter("all")}
+              className={`inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                typeFilter === "all"
+                  ? "border-zinc-900 bg-zinc-900 text-white"
+                  : "border-amber-300 bg-white/80 text-zinc-800 hover:bg-white"
+              }`}
+            >
+              All
+            </button>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="inline-flex cursor-pointer items-center rounded-full border border-amber-300 bg-white/80 px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:bg-white">
-                <span>Select date</span>
-                <input
-                  type="date"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="ml-2 w-[1.25rem] cursor-pointer border-0 bg-transparent p-0 text-transparent outline-none"
-                  aria-label="Select date"
-                />
-              </label>
+            <button
+              type="button"
+              onClick={() => setTypeFilter("community")}
+              className={`inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                typeFilter === "community"
+                  ? "border-zinc-900 bg-zinc-900 text-white"
+                  : "border-amber-300 bg-white/80 text-zinc-800 hover:bg-white"
+              }`}
+            >
+              Community
+            </button>
 
-              {dateFilter.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setDateFilter("")}
-                  className="inline-flex items-center gap-2 rounded-full border border-zinc-900 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-zinc-800"
-                >
-                  <span>{formatSelectedDate(dateFilter)}</span>
-                  <span aria-hidden>✕</span>
-                </button>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => setTypeFilter("pro")}
+              className={`inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                typeFilter === "pro"
+                  ? "border-zinc-900 bg-zinc-900 text-white"
+                  : "border-amber-300 bg-white/80 text-zinc-800 hover:bg-white"
+              }`}
+            >
+              Pro
+            </button>
           </div>
         </div>
       </div>
