@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import PayButton from "@/components/PayButton";
 import LocalTime from "@/components/LocalTime";
 import { joinSession, type JoinSessionResult } from "@/app/sessions/actions";
@@ -37,6 +37,18 @@ async function joinSessionAction(
   return joinSession(formData);
 }
 
+function getSessionTiming(startsAtIso: string, durationMinutes: number) {
+  const startMs = new Date(startsAtIso).getTime();
+  const endMs = startMs + durationMinutes * 60_000;
+
+  return {
+    startMs,
+    endMs,
+    joinOpensAtMs: startMs - 5 * 60_000,
+    reserveClosesAtMs: startMs + 5 * 60_000,
+  };
+}
+
 export default function SessionsBrowser({
   sessions,
   seatsBySession = {},
@@ -51,6 +63,17 @@ export default function SessionsBrowser({
   isAdmin?: boolean;
 }) {
   const [state, formAction] = useActionState(joinSessionAction, null);
+  const [nowMs, setNowMs] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowMs(Date.now());
+    }, 15_000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const joinedSet = useMemo(() => new Set(joinedSessionIds), [joinedSessionIds]);
 
   return (
     <div className="space-y-4">
@@ -58,8 +81,19 @@ export default function SessionsBrowser({
         const type = sessionType(s.price_cents);
         const signupCount = seatsBySession[s.id] ?? 0;
         const isFree = (s.price_cents ?? 0) <= 0;
-        const isJoined = joinedSessionIds.includes(s.id);
+        const isJoined = joinedSet.has(s.id);
         const canReserveDirectly = isFree || isAdmin;
+
+        const { endMs, joinOpensAtMs, reserveClosesAtMs } = getSessionTiming(
+          s.starts_at,
+          s.duration_minutes
+        );
+
+        const isEnded = nowMs > endMs;
+        const isInProgress = nowMs > reserveClosesAtMs && nowMs <= endMs;
+        const canJoinNow =
+          isJoined && nowMs >= joinOpensAtMs && nowMs <= reserveClosesAtMs;
+        const canReserveNow = nowMs <= reserveClosesAtMs;
 
         return (
           <div key={s.id} className="border rounded-2xl p-6">
@@ -93,10 +127,39 @@ export default function SessionsBrowser({
                 <div className="text-sm opacity-70">
                   Breakout rooms are created manually as needed.
                 </div>
+
+                {isJoined && !canJoinNow && !isInProgress && !isEnded && (
+                  <div className="text-sm opacity-70">
+                    Join Room becomes available 5 minutes before start.
+                  </div>
+                )}
               </div>
 
               <div className="shrink-0">
-                {!userId ? (
+                {isEnded ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="bg-gray-200 text-gray-700 px-4 py-3 rounded-lg cursor-default"
+                  >
+                    Session Ended
+                  </button>
+                ) : isInProgress ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="bg-gray-200 text-gray-700 px-4 py-3 rounded-lg cursor-default"
+                  >
+                    Session in progress
+                  </button>
+                ) : canJoinNow ? (
+                  <Link
+                    href={`/sessions/${s.id}/join`}
+                    className="inline-block bg-black text-white px-4 py-3 rounded-lg"
+                  >
+                    Join Room
+                  </Link>
+                ) : !userId ? (
                   <Link
                     href="/sign-in"
                     className="inline-block bg-black text-white px-4 py-3 rounded-lg"
@@ -111,11 +174,21 @@ export default function SessionsBrowser({
                   >
                     Reserved
                   </button>
+                ) : !canReserveNow ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="bg-gray-200 text-gray-700 px-4 py-3 rounded-lg cursor-default"
+                  >
+                    Session in progress
+                  </button>
                 ) : canReserveDirectly ? (
                   <form action={formAction}>
                     <input type="hidden" name="sessionId" value={s.id} />
                     <button className="bg-black text-white px-4 py-3 rounded-lg">
-                      {isFree ? "Reserve spot (Free)" : "Reserve spot"}
+                      {isFree
+                        ? "Reserve spot (Free)"
+                        : `Reserve – ${formatUsd(s.price_cents)}`}
                     </button>
                   </form>
                 ) : (

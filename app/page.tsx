@@ -1,9 +1,10 @@
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
 import { auth } from "@clerk/nextjs/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import Link from "next/link";
 import SessionsBrowser from "@/components/SessionsBrowser";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type SessionRow = {
   id: string;
@@ -25,10 +26,9 @@ export default async function HomePage() {
       .includes(userId) ??
       false);
 
-  // ✅ Show upcoming + sessions that started in the last 5 minutes (UTC window)
-  const windowStartIso = new Date(
-    new Date().getTime() - 5 * 60_000
-  ).toISOString();
+  // Show upcoming sessions plus sessions that started within the last 5 minutes
+  // so users can still reserve during the grace window.
+  const windowStartIso = new Date(Date.now() - 5 * 60_000).toISOString();
 
   const { data: sessions, error: sessionsError } = await supabaseAdmin
     .from("sessions")
@@ -50,7 +50,7 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <pre className="rounded-2xl border border-zinc-200/70 bg-white/80 p-4 text-xs text-zinc-800 overflow-auto shadow-sm">
+        <pre className="overflow-auto rounded-2xl border border-zinc-200/70 bg-white/80 p-4 text-xs text-zinc-800 shadow-sm">
           {JSON.stringify(sessionsError, null, 2)}
         </pre>
       </div>
@@ -60,7 +60,6 @@ export default async function HomePage() {
   const typedSessions = (sessions ?? []) as SessionRow[];
   const sessionIds = typedSessions.map((s) => s.id);
 
-  // Compute seats + whether current user has booked
   const seatsBySession: Record<string, number> = {};
   const joinedSessionIds: string[] = [];
 
@@ -84,7 +83,7 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <pre className="rounded-2xl border border-zinc-200/70 bg-white/80 p-4 text-xs text-zinc-800 overflow-auto shadow-sm">
+          <pre className="overflow-auto rounded-2xl border border-zinc-200/70 bg-white/80 p-4 text-xs text-zinc-800 shadow-sm">
             {JSON.stringify(bookingsError, null, 2)}
           </pre>
         </div>
@@ -92,16 +91,17 @@ export default async function HomePage() {
     }
 
     const joinedSet = new Set<string>();
+
     for (const b of bookings ?? []) {
       seatsBySession[b.session_id] = (seatsBySession[b.session_id] ?? 0) + 1;
       if (userId && b.user_id === userId) joinedSet.add(b.session_id);
     }
+
     joinedSessionIds.push(...Array.from(joinedSet));
   }
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 sm:space-y-10">
-      {/* Hero / Header */}
       <div className="relative overflow-hidden rounded-3xl border border-zinc-200/70 bg-white/70 shadow-sm">
         <div className="absolute inset-0 bg-gradient-to-br from-amber-50/70 via-white/40 to-zinc-50/60" />
         <div className="relative p-5 sm:p-7">
@@ -113,11 +113,11 @@ export default async function HomePage() {
                 </span>
               </div>
 
-              <h1 className="mt-3 text-3xl sm:text-4xl font-semibold tracking-tight">
+              <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
                 Comedy Writing Room
               </h1>
 
-              <p className="mt-2 text-sm sm:text-base text-zinc-600 leading-relaxed">
+              <p className="mt-2 text-sm leading-relaxed text-zinc-600 sm:text-base">
                 Daily virtual writing rooms for comics. Bring your material,
                 workshop, and connect with other comedians around the world!
               </p>
@@ -126,7 +126,7 @@ export default async function HomePage() {
             {isAdmin && (
               <Link
                 href="/admin/sessions"
-                className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl border border-zinc-300 bg-white/70 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition"
+                className="inline-flex w-full items-center justify-center rounded-xl border border-zinc-300 bg-white/70 px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-white sm:w-auto"
               >
                 Admin
               </Link>
@@ -135,7 +135,6 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* Beta note */}
       <div className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-5 py-4 text-amber-950 shadow-sm">
         <div className="flex items-start gap-3">
           <span aria-hidden className="mt-0.5">
@@ -150,7 +149,6 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* Browser (filters + list) */}
       <SessionsBrowser
         sessions={typedSessions}
         seatsBySession={seatsBySession}
@@ -159,7 +157,6 @@ export default async function HomePage() {
         isAdmin={isAdmin}
       />
 
-      {/* Suggest a time */}
       <div className="rounded-2xl border border-zinc-200/70 bg-white/70 px-6 py-6 text-center shadow-sm">
         <p className="text-sm text-zinc-700">
           No times work for you? Want to host or add a weekly session?
@@ -168,7 +165,7 @@ export default async function HomePage() {
           href="https://docs.google.com/forms/d/e/1FAIpQLSddb6YHQoTvV11H_y85w4SYG_UhLCXhhJ9FPVF27zTkYJCDbQ/viewform?usp=header"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex w-full sm:w-auto items-center justify-center mt-4 rounded-xl border border-zinc-300 bg-white/70 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition"
+          className="mt-4 inline-flex w-full items-center justify-center rounded-xl border border-zinc-300 bg-white/70 px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-white sm:w-auto"
         >
           Suggest a time →
         </a>
