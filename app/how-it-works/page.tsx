@@ -4,7 +4,7 @@ export default function HowItWorksPage() {
       title: "Session Format",
       subtitle: "60 minutes",
       items: [
-        "Max 5 comics per room (rooms will be split automatically if more than 5 comics sign up)",
+        "Max 4 comics per room (rooms will be split automatically if more than 4 comics sign up)",
         "Quick intros",
         "~10 minutes per comic (more if the room isn’t full)",
         "Run bits, premises, or rough ideas",
