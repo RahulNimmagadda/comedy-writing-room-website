@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createSession, deleteSession, updateSession } from "./actions";
 
@@ -55,6 +56,23 @@ function centsToDollarsString(cents: number) {
   return ((cents ?? 0) / 100).toFixed(2);
 }
 
+function Field({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: ReactNode;
+}) {
+  return (
+    <label htmlFor={htmlFor} className="grid gap-1.5">
+      <span className="text-sm font-medium text-zinc-800">{label}</span>
+      {children}
+    </label>
+  );
+}
+
 export default async function AdminSessionsPage() {
   requireAdmin();
 
@@ -89,41 +107,84 @@ export default async function AdminSessionsPage() {
         <div className="font-semibold">Create session</div>
 
         <form action={createSession} className="grid gap-3">
-          <input name="title" placeholder="Title" className="border p-2" required />
+          <Field label="Title" htmlFor="create-title">
+            <input
+              id="create-title"
+              name="title"
+              placeholder="CDMX Secret Comedy Brunch"
+              className="border p-2"
+              required
+            />
+          </Field>
 
-          <input
-            name="starts_at_local"
-            type="datetime-local"
-            className="border p-2"
-            required
-          />
+          <Field
+            label="Start time (New York time)"
+            htmlFor="create-starts-at-local"
+          >
+            <input
+              id="create-starts-at-local"
+              name="starts_at_local"
+              type="datetime-local"
+              className="border p-2"
+              required
+            />
+          </Field>
 
-          <input
-            name="duration_minutes"
-            type="number"
-            defaultValue={60}
-            className="border p-2"
-          />
+          <Field label="Session length (minutes)" htmlFor="create-duration">
+            <input
+              id="create-duration"
+              name="duration_minutes"
+              type="number"
+              defaultValue={60}
+              min={0}
+              className="border p-2"
+            />
+          </Field>
 
-          <input
-            name="seat_cap"
-            type="number"
-            defaultValue={5}
-            className="border p-2"
-          />
+          <Field label="Seat cap" htmlFor="create-seat-cap">
+            <input
+              id="create-seat-cap"
+              name="seat_cap"
+              type="number"
+              defaultValue={5}
+              min={1}
+              className="border p-2"
+            />
+          </Field>
 
-          <input
-            name="price_dollars"
-            type="number"
-            defaultValue={1}
-            className="border p-2"
-          />
+          <Field label="Price (USD)" htmlFor="create-price-dollars">
+            <input
+              id="create-price-dollars"
+              name="price_dollars"
+              type="number"
+              defaultValue={1}
+              min={0}
+              step="0.01"
+              className="border p-2"
+            />
+          </Field>
 
-          <input
-            name="zoom_link"
-            placeholder="Zoom link (optional if DEFAULT_ZOOM_LINK is set)"
-            className="border p-2"
-          />
+          <Field label="Status" htmlFor="create-status">
+            <select
+              id="create-status"
+              name="status"
+              defaultValue="scheduled"
+              className="border p-2"
+            >
+              <option value="scheduled">Scheduled</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="completed">Completed</option>
+            </select>
+          </Field>
+
+          <Field label="Zoom link" htmlFor="create-zoom-link">
+            <input
+              id="create-zoom-link"
+              name="zoom_link"
+              placeholder="Optional if DEFAULT_ZOOM_LINK is set"
+              className="border p-2"
+            />
+          </Field>
 
           <button className="bg-black text-white p-2 rounded">
             Create
@@ -146,21 +207,87 @@ export default async function AdminSessionsPage() {
             <form action={updateSession} className="grid gap-2">
               <input type="hidden" name="id" value={s.id} />
 
-              <input name="title" defaultValue={s.title} className="border p-2" />
+              <Field label="Title" htmlFor={`title-${s.id}`}>
+                <input
+                  id={`title-${s.id}`}
+                  name="title"
+                  defaultValue={s.title}
+                  className="border p-2"
+                />
+              </Field>
 
-              <input
-                name="starts_at_local"
-                type="datetime-local"
-                defaultValue={utcIsoToNycDatetimeLocal(s.starts_at)}
-                className="border p-2"
-              />
+              <Field
+                label="Start time (New York time)"
+                htmlFor={`starts-at-local-${s.id}`}
+              >
+                <input
+                  id={`starts-at-local-${s.id}`}
+                  name="starts_at_local"
+                  type="datetime-local"
+                  defaultValue={utcIsoToNycDatetimeLocal(s.starts_at)}
+                  className="border p-2"
+                />
+              </Field>
 
-              <input
-                name="zoom_link"
-                defaultValue={s.zoom_link ?? ""}
-                placeholder="Zoom link (optional if DEFAULT_ZOOM_LINK is set)"
-                className="border p-2"
-              />
+              <Field
+                label="Session length (minutes)"
+                htmlFor={`duration-minutes-${s.id}`}
+              >
+                <input
+                  id={`duration-minutes-${s.id}`}
+                  name="duration_minutes"
+                  type="number"
+                  defaultValue={s.duration_minutes}
+                  min={0}
+                  className="border p-2"
+                />
+              </Field>
+
+              <Field label="Seat cap" htmlFor={`seat-cap-${s.id}`}>
+                <input
+                  id={`seat-cap-${s.id}`}
+                  name="seat_cap"
+                  type="number"
+                  defaultValue={s.seat_cap}
+                  min={1}
+                  className="border p-2"
+                />
+              </Field>
+
+              <Field label="Price (USD)" htmlFor={`price-dollars-${s.id}`}>
+                <input
+                  id={`price-dollars-${s.id}`}
+                  name="price_dollars"
+                  type="number"
+                  defaultValue={centsToDollarsString(s.price_cents)}
+                  min={0}
+                  step="0.01"
+                  className="border p-2"
+                />
+              </Field>
+
+              <Field label="Status" htmlFor={`status-${s.id}`}>
+                <select
+                  id={`status-${s.id}`}
+                  name="status"
+                  defaultValue={s.status}
+                  className="border p-2"
+                >
+                  <option value="scheduled">Scheduled</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </Field>
+
+              <Field label="Zoom link" htmlFor={`zoom-link-${s.id}`}>
+                <input
+                  id={`zoom-link-${s.id}`}
+                  name="zoom_link"
+                  defaultValue={s.zoom_link ?? ""}
+                  placeholder="Optional if DEFAULT_ZOOM_LINK is set"
+                  className="border p-2"
+                />
+              </Field>
 
               <button className="bg-black text-white p-2 rounded">
                 Save

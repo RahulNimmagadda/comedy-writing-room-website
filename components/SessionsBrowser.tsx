@@ -439,7 +439,9 @@ export default function SessionsBrowser({
                       <button className="rounded-xl bg-black px-4 py-3 font-medium text-white transition hover:bg-zinc-800">
                         {isFree
                           ? "Reserve spot (Free)"
-                          : `Reserve – ${formatUsd(s.price_cents)}`}
+                          : isAdmin
+                            ? "Reserve spot (Admin free)"
+                            : `Reserve – ${formatUsd(s.price_cents)}`}
                       </button>
                     </form>
                   ) : (
