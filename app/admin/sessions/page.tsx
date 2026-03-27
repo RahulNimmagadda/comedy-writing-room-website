@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -14,6 +14,19 @@ type SessionRow = {
   status: string;
   zoom_link: string | null;
   price_cents: number;
+};
+
+type BookingRow = {
+  session_id: string;
+  user_id: string;
+  user_email: string | null;
+};
+
+type Participant = {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
 };
 
 function requireAdmin() {
@@ -92,6 +105,79 @@ export default async function AdminSessionsPage() {
   }
 
   const rows = (sessions ?? []) as SessionRow[];
+  const sessionIds = rows.map((session) => session.id);
+  const participantsBySession: Record<string, Participant[]> = {};
+
+  if (sessionIds.length > 0) {
+    const { data: bookings, error: bookingsError } = await supabaseAdmin
+      .from("bookings")
+      .select("session_id,user_id,user_email")
+      .in("session_id", sessionIds);
+
+    if (bookingsError) {
+      return (
+        <main className="min-h-screen max-w-4xl mx-auto p-6">
+          <pre>{JSON.stringify(bookingsError, null, 2)}</pre>
+        </main>
+      );
+    }
+
+    const bookingRows = (bookings ?? []) as BookingRow[];
+    const uniqueUserIds = Array.from(
+      new Set(bookingRows.map((booking) => booking.user_id).filter(Boolean))
+    );
+
+    const clerk = await clerkClient();
+    const users = await Promise.all(
+      uniqueUserIds.map(async (userId) => {
+        try {
+          const user = await clerk.users.getUser(userId);
+          const primaryEmail =
+            user.emailAddresses?.find(
+              (email) => email.id === user.primaryEmailAddressId
+            )?.emailAddress ??
+            user.emailAddresses?.[0]?.emailAddress ??
+            "";
+
+          return [
+            userId,
+            {
+              firstName: user.firstName ?? "",
+              lastName: user.lastName ?? "",
+              email: primaryEmail,
+            },
+          ] as const;
+        } catch {
+          return [
+            userId,
+            {
+              firstName: "",
+              lastName: "",
+              email: "",
+            },
+          ] as const;
+        }
+      })
+    );
+
+    const userInfoById = new Map(users);
+
+    for (const booking of bookingRows) {
+      const userInfo = userInfoById.get(booking.user_id);
+      const participant: Participant = {
+        userId: booking.user_id,
+        firstName: userInfo?.firstName ?? "",
+        lastName: userInfo?.lastName ?? "",
+        email: userInfo?.email || booking.user_email || "",
+      };
+
+      if (!participantsBySession[booking.session_id]) {
+        participantsBySession[booking.session_id] = [];
+      }
+
+      participantsBySession[booking.session_id].push(participant);
+    }
+  }
 
   return (
     <main className="min-h-screen max-w-4xl mx-auto p-6 space-y-8">
@@ -195,7 +281,7 @@ export default async function AdminSessionsPage() {
       {/* List */}
       <section className="space-y-3">
         {rows.map((s) => (
-          <div key={s.id} className="border p-4 rounded space-y-2">
+          <div key={s.id} className="border p-4 rounded space-y-4">
             <div className="font-semibold">{s.title}</div>
             <div className="text-sm opacity-70">
               {new Date(s.starts_at).toLocaleString("en-US", {
@@ -298,6 +384,40 @@ export default async function AdminSessionsPage() {
               <input type="hidden" name="id" value={s.id} />
               <button className="text-red-600 text-sm">Delete</button>
             </form>
+
+            <details className="rounded border border-zinc-200 bg-zinc-50/70">
+              <summary className="cursor-pointer list-none px-3 py-2 text-sm font-medium text-zinc-900">
+                See participants ({participantsBySession[s.id]?.length ?? 0})
+              </summary>
+
+              <div className="border-t border-zinc-200 px-3 py-3">
+                {(participantsBySession[s.id]?.length ?? 0) === 0 ? (
+                  <p className="text-sm text-zinc-600">
+                    No one has signed up for this session yet.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {participantsBySession[s.id].map((participant) => (
+                      <div
+                        key={`${s.id}-${participant.userId}`}
+                        className="rounded border border-zinc-200 bg-white px-3 py-2 text-sm"
+                      >
+                        <div>
+                          <span className="font-medium">
+                            {participant.firstName || participant.lastName
+                              ? `${participant.firstName} ${participant.lastName}`.trim()
+                              : "Name unavailable"}
+                          </span>
+                        </div>
+                        <div className="text-zinc-600">
+                          {participant.email || "Email unavailable"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </details>
           </div>
         ))}
       </section>
