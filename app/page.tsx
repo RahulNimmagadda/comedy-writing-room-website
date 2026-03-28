@@ -152,7 +152,7 @@ export default async function HomePage() {
 
             <div className="mt-10 grid gap-4 text-[#f5eadb] sm:grid-cols-3">
               <div>
-                <div className="text-sm text-[#a99585]">Room size</div>
+                <div className="text-sm text-[#a99585]">Working group size</div>
                 <div className="font-serif text-3xl font-semibold">
                   4 comics max
                 </div>
@@ -165,8 +165,9 @@ export default async function HomePage() {
               </div>
               <div>
                 <div className="text-sm text-[#a99585]">Pricing</div>
-                <div className="font-serif text-3xl font-semibold">
-                  $1 community / $5 pro
+                <div className="font-serif text-3xl font-semibold leading-none">
+                  <div>$1 community /</div>
+                  <div className="mt-1">$5 pro</div>
                 </div>
               </div>
             </div>
