@@ -11,14 +11,15 @@ export default function NavLink({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const pathOnly = href.split("#")[0] || "/";
 
   // Treat "/sessions" as "Home" since it redirects to "/"
   const normalized = pathname === "/sessions" ? "/" : pathname;
 
   const isActive =
-    href === "/"
+    pathOnly === "/"
       ? normalized === "/"
-      : normalized === href || normalized.startsWith(href + "/");
+      : normalized === pathOnly || normalized.startsWith(pathOnly + "/");
 
   return (
     <Link

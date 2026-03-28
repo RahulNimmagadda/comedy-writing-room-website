@@ -132,7 +132,7 @@ export default async function HomePage() {
                 Book a Session
               </a>
               <Link
-                href="/how-it-works"
+                href="/#how-it-works"
                 className="inline-flex items-center justify-center rounded-full border border-[#8d735d] px-6 py-3 text-sm font-semibold text-[#f7eedf] transition hover:bg-white/5"
               >
                 How It Works
@@ -197,7 +197,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="space-y-6">
+      <section id="how-it-works" className="space-y-6 scroll-mt-28">
         <div>
           <div className="text-sm font-semibold uppercase tracking-[0.24em] text-[#8c6a50]">
             How It Works

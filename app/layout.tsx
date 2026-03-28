@@ -45,7 +45,7 @@ export const viewport: Viewport = {
 
 const NAV_ITEMS = [
   { href: "/", label: "Home" },
-  { href: "/how-it-works", label: "How It Works" },
+  { href: "/#how-it-works", label: "How It Works" },
   { href: "/upcoming-improvements", label: "Upcoming Improvements" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
@@ -91,7 +91,7 @@ export default async function RootLayout({
 
                 <nav className="hidden items-center gap-1 md:flex">
                   <NavLink href="/">Home</NavLink>
-                  <NavLink href="/how-it-works">How It Works</NavLink>
+                  <NavLink href="/#how-it-works">How It Works</NavLink>
                   <NavLink href="/upcoming-improvements">
                     Upcoming Improvements
                   </NavLink>
@@ -140,7 +140,7 @@ export default async function RootLayout({
                 <div className="flex flex-wrap items-center gap-4 text-sm text-[#5d4e43]">
                   <Link
                     className="transition hover:text-[#1f1510]"
-                    href="/how-it-works"
+                    href="/#how-it-works"
                   >
                     How It Works
                   </Link>

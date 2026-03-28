@@ -27,11 +27,12 @@ export default function MobileNav({ items }: { items: Item[] }) {
       <div className="absolute right-0 mt-2 w-60 overflow-hidden rounded-[1.5rem] border border-[#d8c3ad] bg-[#fbf5eb]/95 shadow-lg backdrop-blur">
         <div className="flex flex-col p-2 text-sm">
           {items.map((item) => {
+            const pathOnly = item.href.split("#")[0] || "/";
             const isActive =
-              item.href === "/"
+              pathOnly === "/"
                 ? normalized === "/"
-                : normalized === item.href ||
-                  normalized.startsWith(item.href + "/");
+                : normalized === pathOnly ||
+                  normalized.startsWith(pathOnly + "/");
 
             return (
               <Link
