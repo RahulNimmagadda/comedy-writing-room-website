@@ -24,7 +24,7 @@ export default function ContactPage() {
           </div>
           <a
             href="mailto:hello@comedywritingroom.com"
-            className="mt-4 block font-serif text-4xl font-semibold tracking-tight text-[#1d140f] transition hover:text-[#b5532e] sm:text-5xl"
+            className="mt-4 block break-words font-serif text-[2rem] font-semibold leading-[1.02] tracking-tight text-[#1d140f] transition hover:text-[#b5532e] sm:text-5xl"
           >
             hello@comedywritingroom.com
           </a>

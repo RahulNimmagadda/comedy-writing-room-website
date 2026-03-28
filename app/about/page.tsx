@@ -39,7 +39,7 @@ export default function AboutPage() {
           <div className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b5532e]">
             Contact
           </div>
-          <p className="mt-4 font-serif text-3xl font-semibold text-[#1d140f]">
+          <p className="mt-4 break-words font-serif text-3xl font-semibold text-[#1d140f]">
             hello@comedywritingroom.com
           </p>
           <p className="mt-4 text-base leading-relaxed text-[#5e5045]">
