@@ -116,7 +116,7 @@ export default async function HomePage() {
         <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1fr)_440px] lg:gap-10">
           <div className="max-w-3xl">
             <div className="text-sm font-semibold uppercase tracking-[0.28em] text-[#f0d2a8]">
-              Daily virtual rooms for comics
+              Virtual Writing Rooms for Comics
             </div>
             <h1 className="mt-5 max-w-4xl font-serif text-6xl font-semibold leading-[0.92] tracking-tight text-[#f8f1e8] sm:text-7xl lg:text-[6.9rem]">
               Sharpen bits with other funny people.
