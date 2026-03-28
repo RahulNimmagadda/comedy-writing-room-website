@@ -24,6 +24,10 @@ type SessionRow = {
   price_cents: number;
 };
 
+function displayDurationMinutes(value: number) {
+  return Number.isFinite(value) && value > 0 ? value : 60;
+}
+
 export default function FeaturedSessionCard({
   session,
   signupCount,
@@ -38,6 +42,7 @@ export default function FeaturedSessionCard({
   isAdmin?: boolean;
 }) {
   const type = sessionType(session.price_cents);
+  const durationMinutes = displayDurationMinutes(session.duration_minutes);
 
   return (
     <section className="overflow-hidden rounded-[2rem] border border-[#d8c3ad] bg-[linear-gradient(145deg,#f9f1e7,#eadcca)] p-6 text-[#211610] shadow-[0_26px_70px_rgba(58,36,23,0.18)] sm:p-8">
@@ -74,7 +79,7 @@ export default function FeaturedSessionCard({
         </div>
 
         <div className="mt-3 text-sm text-[#5d4e43]">
-          {signupCount} comics signed up • {session.duration_minutes} minutes
+          {signupCount} comics signed up • {durationMinutes} minutes
         </div>
         <div className="mt-2 text-sm leading-relaxed text-[#5d4e43]">
           Bring one idea and get feedback, steers, and tags from the room.
@@ -85,7 +90,7 @@ export default function FeaturedSessionCard({
         <SessionActionButton
           sessionId={session.id}
           startsAt={session.starts_at}
-          durationMinutes={session.duration_minutes}
+          durationMinutes={durationMinutes}
           priceCents={session.price_cents}
           userId={userId}
           isJoined={isJoined}
