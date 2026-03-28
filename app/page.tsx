@@ -259,8 +259,9 @@ export default async function HomePage() {
         </h2>
         <p className="mt-5 max-w-4xl text-lg leading-relaxed text-[#d4c3b3]">
           Comedy gets easier when you stop writing alone. The room gives you
-          momentum, accountability, and the kind of feedback that helps you
-          find the stronger version of the bit faster.
+          momentum, accountability, and stronger material. As a bonus, you get
+          comedy connections and perspective from different cities and
+          countries!
         </p>
       </section>
 

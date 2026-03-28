@@ -112,7 +112,10 @@ export function confirmationEmailHtml(args: {
       <strong>When:</strong> ${escapeHtml(whenLocal)}
     </p>
     <p style="margin:0 0 16px 0;">
-      Join from the site when the button opens (5 minutes before start):
+      This session takes place on Zoom. You’ll join through the Comedy Writing Room site when the join button opens 5 minutes before start.
+    </p>
+    <p style="margin:0 0 16px 0;">
+      Join from the site when the button opens:
     </p>
     <p style="margin:0 0 20px 0;">
       <a href="${url}" style="display:inline-block; padding:10px 14px; border-radius:10px; background:#111827; color:#fff; text-decoration:none;">
@@ -148,6 +151,9 @@ export function reminderEmailHtml(args: {
     </p>
     <p style="margin:0 0 16px 0;">
       <strong>When:</strong> ${escapeHtml(whenLocal)}
+    </p>
+    <p style="margin:0 0 16px 0;">
+      Reminder: this session takes place on Zoom. You’ll join through the Comedy Writing Room site when the join button opens 5 minutes before start.
     </p>
     <p style="margin:0 0 20px 0;">
       <a href="${url}" style="display:inline-block; padding:10px 14px; border-radius:10px; background:#111827; color:#fff; text-decoration:none;">

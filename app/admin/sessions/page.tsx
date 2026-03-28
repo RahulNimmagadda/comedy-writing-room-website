@@ -69,6 +69,29 @@ function centsToDollarsString(cents: number) {
   return ((cents ?? 0) / 100).toFixed(2);
 }
 
+function utcIsoToNycDate(utcIso: string) {
+  const d = new Date(utcIso);
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: NYC_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+function firstSearchParam(
+  value: string | string[] | undefined
+): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
 function Field({
   label,
   htmlFor,
@@ -86,15 +109,25 @@ function Field({
   );
 }
 
-export default async function AdminSessionsPage() {
+export default async function AdminSessionsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   requireAdmin();
+
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const query = firstSearchParam(resolvedSearchParams.q)?.trim() ?? "";
+  const statusFilter =
+    firstSearchParam(resolvedSearchParams.status)?.trim() ?? "all";
+  const dateFilter = firstSearchParam(resolvedSearchParams.date)?.trim() ?? "";
 
   const { data: sessions, error } = await supabaseAdmin
     .from("sessions")
     .select(
       "id,title,starts_at,duration_minutes,seat_cap,status,zoom_link,price_cents"
     )
-    .order("starts_at", { ascending: true });
+    .order("starts_at", { ascending: false });
 
   if (error) {
     return (
@@ -105,7 +138,25 @@ export default async function AdminSessionsPage() {
   }
 
   const rows = (sessions ?? []) as SessionRow[];
-  const sessionIds = rows.map((session) => session.id);
+  const normalizedQuery = query.toLowerCase();
+  const filteredRows = rows.filter((session) => {
+    const matchesQuery =
+      normalizedQuery.length === 0 ||
+      session.title.toLowerCase().includes(normalizedQuery) ||
+      new Date(session.starts_at)
+        .toLocaleString("en-US", { timeZone: NYC_TZ })
+        .toLowerCase()
+        .includes(normalizedQuery);
+
+    const matchesStatus =
+      statusFilter === "all" || session.status === statusFilter;
+
+    const matchesDate =
+      dateFilter.length === 0 || utcIsoToNycDate(session.starts_at) === dateFilter;
+
+    return matchesQuery && matchesStatus && matchesDate;
+  });
+  const sessionIds = filteredRows.map((session) => session.id);
   const participantsBySession: Record<string, Participant[]> = {};
 
   if (sessionIds.length > 0) {
@@ -280,7 +331,59 @@ export default async function AdminSessionsPage() {
 
       {/* List */}
       <section className="space-y-3">
-        {rows.map((s) => (
+        <form className="grid gap-3 rounded border p-4 md:grid-cols-[minmax(0,1fr)_180px_180px_auto] md:items-end">
+          <Field label="Search" htmlFor="session-search">
+            <input
+              id="session-search"
+              name="q"
+              defaultValue={query}
+              placeholder="Search title or date"
+              className="border p-2"
+            />
+          </Field>
+
+          <Field label="Status" htmlFor="session-status-filter">
+            <select
+              id="session-status-filter"
+              name="status"
+              defaultValue={statusFilter}
+              className="border p-2"
+            >
+              <option value="all">All statuses</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="completed">Completed</option>
+            </select>
+          </Field>
+
+          <Field label="Date" htmlFor="session-date-filter">
+            <input
+              id="session-date-filter"
+              name="date"
+              defaultValue={dateFilter}
+              type="date"
+              className="border p-2"
+            />
+          </Field>
+
+          <div className="flex gap-2">
+            <button className="bg-black text-white px-4 py-2 rounded">
+              Apply
+            </button>
+            <Link
+              href="/admin/sessions"
+              className="inline-flex items-center justify-center rounded border px-4 py-2"
+            >
+              Reset
+            </Link>
+          </div>
+        </form>
+
+        <div className="text-sm text-zinc-600">
+          Showing {filteredRows.length} of {rows.length} sessions
+        </div>
+
+        {filteredRows.map((s) => (
           <div key={s.id} className="border p-4 rounded space-y-4">
             <div className="font-semibold">{s.title}</div>
             <div className="text-sm opacity-70">
@@ -420,6 +523,12 @@ export default async function AdminSessionsPage() {
             </details>
           </div>
         ))}
+
+        {filteredRows.length === 0 ? (
+          <div className="rounded border border-dashed p-6 text-sm text-zinc-600">
+            No sessions match those filters.
+          </div>
+        ) : null}
       </section>
     </main>
   );

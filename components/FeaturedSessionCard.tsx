@@ -82,7 +82,8 @@ export default function FeaturedSessionCard({
           {signupCount} comics signed up • {durationMinutes} minutes
         </div>
         <div className="mt-2 text-sm leading-relaxed text-[#5d4e43]">
-          Bring one idea and get feedback, steers, and tags from the room.
+          Bring unfinished ideas and get feedback, steers, and tags from the
+          room.
         </div>
       </div>
 
