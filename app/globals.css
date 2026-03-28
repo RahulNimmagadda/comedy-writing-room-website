@@ -6,8 +6,8 @@ html {
 }
 
 :root {
-  --background: #fbfaf7; /* warm page background */
-  --foreground: #171717;
+  --background: #f5ede2;
+  --foreground: #1f1510;
 }
 
 @theme inline {
@@ -23,8 +23,16 @@ html {
 */
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at top right, rgba(240, 194, 122, 0.18), transparent 22%),
+    radial-gradient(circle at 15% 35%, rgba(255, 255, 255, 0.34), transparent 18%),
+    linear-gradient(180deg, #f7efe4 0%, var(--background) 40%, #efe3d5 100%);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
 }

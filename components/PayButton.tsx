@@ -40,10 +40,12 @@ export default function PayButton({
   sessionId,
   priceCents,
   disabled,
+  className,
 }: {
   sessionId: string;
   priceCents: number;
   disabled?: boolean;
+  className?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const { isSignedIn } = useAuth();
@@ -100,7 +102,10 @@ export default function PayButton({
     <button
       onClick={onClick}
       disabled={disabled || loading}
-      className="px-3 py-2 rounded bg-black text-white disabled:opacity-40"
+      className={
+        className ??
+        "rounded bg-black px-3 py-2 text-white disabled:opacity-40"
+      }
     >
       {label}
     </button>

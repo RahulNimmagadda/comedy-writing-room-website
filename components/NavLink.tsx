@@ -24,10 +24,10 @@ export default function NavLink({
     <Link
       href={href}
       className={[
-        "rounded-lg px-2 py-1 text-sm transition",
+        "rounded-full px-4 py-2 text-sm font-medium transition",
         isActive
-          ? "bg-amber-400/90 text-zinc-900"
-          : "text-zinc-600 hover:text-zinc-900 hover:bg-white/60",
+          ? "bg-[#1f1510] text-[#fff6ea]"
+          : "text-[#5c4d42] hover:bg-white/55 hover:text-[#1f1510]",
       ].join(" ")}
       aria-current={isActive ? "page" : undefined}
     >

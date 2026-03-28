@@ -1,5 +1,6 @@
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import NavLink from "@/components/NavLink";
@@ -50,11 +51,19 @@ const NAV_ITEMS = [
   { href: "/contact", label: "Contact" },
 ] as const;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { userId } = await auth();
+  const isAdmin =
+    !!userId &&
+    (process.env.ADMIN_USER_IDS?.split(",")
+      .map((s) => s.trim())
+      .includes(userId) ??
+      false);
+
   return (
     <ClerkProvider>
       <html lang="en">
@@ -63,59 +72,92 @@ export default function RootLayout({
           <link rel="shortcut icon" href="/favicon.avif?v=5" />
           <link rel="apple-touch-icon" href="/favicon.avif?v=5" />
         </head>
-        <body className="min-h-screen bg-[#fbfaf7] text-zinc-900 antialiased dark:bg-[#fbfaf7] dark:text-zinc-900">
-          <div className="border-b border-zinc-200/60 bg-amber-400/90">
-            <div className="mx-auto max-w-6xl px-4 py-2 text-center text-xs font-medium text-zinc-900 sm:px-6 lg:px-8">
-              Beta — built with the community. Feedback welcome.
+        <body className="min-h-screen text-zinc-900 antialiased">
+          <div className="border-b border-[#d8c3ad]/80 bg-[#f0c27a]/70">
+            <div className="mx-auto max-w-7xl px-4 py-2 text-center text-xs font-medium uppercase tracking-[0.2em] text-[#1f1510] sm:px-6 lg:px-8">
+              Beta • built with the community • feedback welcome
             </div>
           </div>
 
-          <header className="sticky top-0 z-50 border-b border-zinc-200/60 bg-[#fbfaf7]/90 backdrop-blur">
-            <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-              <Link href="/" className="text-sm font-semibold tracking-tight">
-                Comedy Writing Room
-              </Link>
+          <header className="sticky top-0 z-50 bg-transparent">
+            <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between rounded-full border border-[#d1ba9e] bg-[#fbf5eb]/88 px-5 py-4 shadow-[0_20px_50px_rgba(58,36,23,0.08)] backdrop-blur">
+                <Link
+                  href="/"
+                  className="font-serif text-xl font-semibold tracking-tight text-[#1f1510] sm:text-2xl"
+                >
+                  Comedy Writing Room
+                </Link>
 
-              <nav className="hidden items-center gap-1 md:flex">
-                <NavLink href="/">Home</NavLink>
-                <NavLink href="/how-it-works">How It Works</NavLink>
-                <NavLink href="/upcoming-improvements">
-                  Upcoming Improvements
-                </NavLink>
-                <NavLink href="/about">About</NavLink>
-                <NavLink href="/contact">Contact</NavLink>
-              </nav>
+                <nav className="hidden items-center gap-1 md:flex">
+                  <NavLink href="/">Home</NavLink>
+                  <NavLink href="/how-it-works">How It Works</NavLink>
+                  <NavLink href="/upcoming-improvements">
+                    Upcoming Improvements
+                  </NavLink>
+                  <NavLink href="/about">About</NavLink>
+                  <NavLink href="/contact">Contact</NavLink>
+                  {isAdmin && <NavLink href="/admin/sessions">Admin</NavLink>}
+                </nav>
 
-              <MobileNav items={[...NAV_ITEMS]} />
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/sign-in"
+                    className="hidden rounded-full bg-[#1f1510] px-5 py-2.5 text-sm font-semibold text-[#fff6ea] transition hover:bg-[#31231b] md:inline-flex"
+                  >
+                    Join
+                  </Link>
+                  <MobileNav
+                    items={[
+                      ...NAV_ITEMS,
+                      ...(isAdmin
+                        ? [{ href: "/admin/sessions", label: "Admin" }]
+                        : []),
+                    ]}
+                  />
+                </div>
+              </div>
             </div>
           </header>
 
-          <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-12 lg:px-8">
+          <main className="mx-auto max-w-7xl px-4 pb-10 pt-6 sm:px-6 sm:pb-16 sm:pt-8 lg:px-8">
             {children}
           </main>
 
-          <footer className="border-t border-zinc-200/60">
-            <div className="mx-auto max-w-6xl px-4 py-10 text-sm text-zinc-500 sm:px-6 lg:px-8">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>Comedy Writing Room</div>
-                <div className="flex items-center gap-4">
+          <footer className="border-t border-[#d8c3ad]/90">
+            <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+              <div className="flex flex-col gap-6 rounded-[2rem] border border-[#d8c3ad] bg-[#fbf5eb]/85 px-6 py-8 shadow-[0_24px_60px_rgba(58,36,23,0.08)] sm:flex-row sm:items-end sm:justify-between">
+                <div className="max-w-xl">
+                  <div className="font-serif text-2xl font-semibold text-[#1f1510]">
+                    Comedy Writing Room
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-[#5d4e43]">
+                    Daily virtual writing rooms for comics who want more reps,
+                    sharper material, and better feedback.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 text-sm text-[#5d4e43]">
                   <Link
-                    className="transition hover:text-zinc-700"
+                    className="transition hover:text-[#1f1510]"
                     href="/how-it-works"
                   >
                     How It Works
                   </Link>
                   <Link
-                    className="transition hover:text-zinc-700"
+                    className="transition hover:text-[#1f1510]"
                     href="/upcoming-improvements"
                   >
                     Upcoming Improvements
                   </Link>
-                  <Link className="transition hover:text-zinc-700" href="/about">
+                  <Link
+                    className="transition hover:text-[#1f1510]"
+                    href="/about"
+                  >
                     About
                   </Link>
                   <Link
-                    className="transition hover:text-zinc-700"
+                    className="transition hover:text-[#1f1510]"
                     href="/contact"
                   >
                     Contact

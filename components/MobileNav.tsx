@@ -20,11 +20,11 @@ export default function MobileNav({ items }: { items: Item[] }) {
 
   return (
     <details ref={detailsRef} className="relative z-50 md:hidden">
-      <summary className="cursor-pointer list-none rounded-xl border border-zinc-300 bg-white/60 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-white transition">
+      <summary className="cursor-pointer list-none rounded-full border border-[#d1ba9e] bg-white/70 px-4 py-2 text-sm font-semibold text-[#1f1510] transition hover:bg-white">
         Menu
       </summary>
 
-      <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-zinc-200/70 bg-white/90 shadow-lg backdrop-blur">
+      <div className="absolute right-0 mt-2 w-60 overflow-hidden rounded-[1.5rem] border border-[#d8c3ad] bg-[#fbf5eb]/95 shadow-lg backdrop-blur">
         <div className="flex flex-col p-2 text-sm">
           {items.map((item) => {
             const isActive =
@@ -39,10 +39,10 @@ export default function MobileNav({ items }: { items: Item[] }) {
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
                 className={[
-                  "rounded-xl px-3 py-2 transition",
+                  "rounded-2xl px-4 py-3 transition",
                   isActive
-                    ? "bg-amber-400/90 text-zinc-900 font-semibold"
-                    : "text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900",
+                    ? "bg-[#1f1510] font-semibold text-[#fff6ea]"
+                    : "text-[#5c4d42] hover:bg-white hover:text-[#1f1510]",
                 ].join(" ")}
               >
                 {item.label}
