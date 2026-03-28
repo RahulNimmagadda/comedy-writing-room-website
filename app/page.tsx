@@ -130,7 +130,7 @@ export default async function HomePage() {
             <div className="mt-8 flex flex-wrap gap-3">
               <a
                 href="#sessions"
-                className="inline-flex items-center justify-center rounded-full bg-[#f4e9db] px-6 py-3 text-sm font-semibold text-[#1c130e] transition hover:bg-[#fff8ef]"
+                className="inline-flex items-center justify-center rounded-full bg-[#f3e4cf] px-6 py-3 text-sm font-semibold text-[#1f1510] shadow-[0_12px_30px_rgba(13,8,4,0.18)] transition hover:bg-[#fff3e0]"
               >
                 Book a Session
               </a>
@@ -198,15 +198,6 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      <div className="rounded-[2rem] border border-[#e2c48d] bg-[#f0c27a]/20 px-5 py-4 text-[#6a452d] shadow-[0_24px_60px_rgba(58,36,23,0.08)]">
-        <p className="text-sm leading-relaxed">
-          <span className="font-semibold">Beta Mode — Friends of Rah:</span>{" "}
-          Please don&apos;t share this publicly yet. I&apos;m very excited, but
-          still working out the kinks (ayo)! Lmk directly if you have feedback,
-          questions, etc.
-        </p>
-      </div>
 
       <section className="space-y-6">
         <div>

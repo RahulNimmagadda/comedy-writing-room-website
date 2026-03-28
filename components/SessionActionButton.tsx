@@ -39,7 +39,7 @@ async function joinSessionAction(
 type Variant = "hero" | "list";
 
 const baseButtonClasses =
-  "inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition";
+  "inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold whitespace-nowrap transition";
 
 const stylesByVariant: Record<
   Variant,
@@ -144,7 +144,10 @@ export default function SessionActionButton({
       ) : canReserveDirectly ? (
         <form action={formAction}>
           <input type="hidden" name="sessionId" value={sessionId} />
-          <button className={`${baseButtonClasses} ${variantStyles.primary}`}>
+          <button
+            className={`${baseButtonClasses} ${variantStyles.primary}`}
+            type="submit"
+          >
             {isFree
               ? "Reserve spot (Free)"
               : isAdmin

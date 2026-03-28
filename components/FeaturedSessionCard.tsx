@@ -95,7 +95,7 @@ export default function FeaturedSessionCard({
 
         <a
           href="#sessions"
-          className="inline-flex items-center justify-center rounded-full border border-[#8d735d] px-5 py-3 text-sm font-semibold text-[#2c1d15] transition hover:bg-white/55"
+          className="inline-flex items-center justify-center rounded-full border border-[#8d735d] bg-white/55 px-5 py-3 text-sm font-semibold text-[#1f1510] transition hover:bg-white/78"
         >
           See All Sessions
         </a>
