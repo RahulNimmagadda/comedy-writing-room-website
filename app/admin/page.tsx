@@ -2,6 +2,7 @@ import { DateTime } from "luxon";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import AdminActionButton from "@/components/AdminActionButton";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 function isAdmin(userId: string | null | undefined) {
@@ -130,9 +131,12 @@ export default async function AdminPage() {
             <option value="5">Pro ($5)</option>
           </select>
 
-          <button className="bg-black text-white p-2 rounded w-full">
+          <AdminActionButton
+            pendingLabel="Creating..."
+            className="w-full px-4 py-2"
+          >
             Create
-          </button>
+          </AdminActionButton>
         </form>
       </section>
 
@@ -186,9 +190,9 @@ export default async function AdminPage() {
                   {new Date(s.starts_at).toLocaleString()}
                 </div>
 
-                <button className="bg-black text-white px-3 py-1 rounded">
+                <AdminActionButton pendingLabel="Saving..." className="px-3 py-1">
                   Save
-                </button>
+                </AdminActionButton>
               </div>
             </form>
           );

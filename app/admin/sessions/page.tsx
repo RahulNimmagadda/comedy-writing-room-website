@@ -2,6 +2,7 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import AdminActionButton from "@/components/AdminActionButton";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createSession, deleteSession, updateSession } from "./actions";
 
@@ -323,9 +324,9 @@ export default async function AdminSessionsPage({
             />
           </Field>
 
-          <button className="bg-black text-white p-2 rounded">
+          <AdminActionButton pendingLabel="Creating..." className="px-4 py-2">
             Create
-          </button>
+          </AdminActionButton>
         </form>
       </section>
 
@@ -367,12 +368,12 @@ export default async function AdminSessionsPage({
           </Field>
 
           <div className="flex gap-2">
-            <button className="bg-black text-white px-4 py-2 rounded">
+            <button className="cursor-pointer rounded bg-black px-4 py-2 text-white transition hover:bg-zinc-800 active:bg-zinc-950">
               Apply
             </button>
             <Link
               href="/admin/sessions"
-              className="inline-flex items-center justify-center rounded border px-4 py-2"
+              className="inline-flex cursor-pointer items-center justify-center rounded border px-4 py-2 transition hover:bg-zinc-50 active:bg-zinc-100"
             >
               Reset
             </Link>
@@ -478,14 +479,20 @@ export default async function AdminSessionsPage({
                 />
               </Field>
 
-              <button className="bg-black text-white p-2 rounded">
+              <AdminActionButton pendingLabel="Saving..." className="px-4 py-2">
                 Save
-              </button>
+              </AdminActionButton>
             </form>
 
             <form action={deleteSession}>
               <input type="hidden" name="id" value={s.id} />
-              <button className="text-red-600 text-sm">Delete</button>
+              <AdminActionButton
+                pendingLabel="Deleting..."
+                variant="danger"
+                className="text-sm"
+              >
+                Delete
+              </AdminActionButton>
             </form>
 
             <details className="rounded border border-zinc-200 bg-zinc-50/70">
