@@ -99,9 +99,6 @@ export default async function HomePage() {
   }
 
   const featuredSession = typedSessions[0] ?? null;
-  const remainingSessions = featuredSession
-    ? typedSessions.filter((s) => s.id !== featuredSession.id)
-    : typedSessions;
   const featuredSignupCount = featuredSession
     ? seatsBySession[featuredSession.id] ?? 0
     : 0;
@@ -276,7 +273,7 @@ export default async function HomePage() {
         </div>
 
         <SessionsBrowser
-          sessions={remainingSessions}
+          sessions={typedSessions}
           seatsBySession={seatsBySession}
           joinedSessionIds={joinedSessionIds}
           userId={userId ?? null}
