@@ -19,6 +19,32 @@ function dollarsToCents(value: FormDataEntryValue | null) {
   return Math.round(n * 100);
 }
 
+function getAnalyticsStatus() {
+  const isVercelProduction = process.env.VERCEL_ENV === "production";
+
+  if (isVercelProduction) {
+    return {
+      label: "Collecting production traffic",
+      detail:
+        "Page views, visitors, referrers, countries, and devices should begin showing up in Vercel Analytics as people use the live site.",
+    };
+  }
+
+  if (process.env.VERCEL_ENV) {
+    return {
+      label: `Connected on ${process.env.VERCEL_ENV}`,
+      detail:
+        "Analytics is wired up. Production traffic will appear once this version is deployed to the production environment.",
+    };
+  }
+
+  return {
+    label: "Code is wired up",
+    detail:
+      "Deploy this build to Vercel and Analytics will start collecting visits on the live site.",
+  };
+}
+
 export default async function AdminPage() {
   const { userId } = auth();
   if (!isAdmin(userId)) redirect("/");
@@ -93,10 +119,51 @@ export default async function AdminPage() {
     .from("sessions")
     .select("*")
     .order("starts_at", { ascending: true });
+  const analyticsStatus = getAnalyticsStatus();
 
   return (
     <main className="max-w-3xl mx-auto p-10 space-y-6">
       <h1 className="text-2xl font-bold">Admin</h1>
+
+      <section className="rounded border p-4 space-y-3 bg-[#fbf5eb]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="font-semibold">Traffic Snapshot</h2>
+            <p className="text-sm text-zinc-700">{analyticsStatus.label}</p>
+          </div>
+
+          <Link
+            href="https://vercel.com/dashboard"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 transition hover:bg-zinc-50"
+          >
+            Open Vercel Analytics
+          </Link>
+        </div>
+
+        <p className="text-sm text-zinc-600">{analyticsStatus.detail}</p>
+
+        <div className="grid gap-2 text-sm text-zinc-700 sm:grid-cols-2">
+          <div className="rounded border bg-white px-3 py-2">
+            Visitors and page views
+          </div>
+          <div className="rounded border bg-white px-3 py-2">
+            Countries and regions
+          </div>
+          <div className="rounded border bg-white px-3 py-2">
+            Referrers and top pages
+          </div>
+          <div className="rounded border bg-white px-3 py-2">
+            Devices, browsers, and OS
+          </div>
+        </div>
+
+        <p className="text-xs text-zinc-500">
+          Vercel shows aggregate traffic data, not personal identity, unless a
+          visitor signs in and you separately track app-specific events.
+        </p>
+      </section>
 
       <section className="border p-4 space-y-3 rounded">
         <h2 className="font-semibold">Create Session</h2>

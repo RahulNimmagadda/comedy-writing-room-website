@@ -1,6 +1,7 @@
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import NavLink from "@/components/NavLink";
@@ -166,6 +167,7 @@ export default async function RootLayout({
               </div>
             </div>
           </footer>
+          <Analytics />
         </body>
       </html>
     </ClerkProvider>
