@@ -149,15 +149,15 @@ export default async function HomePage() {
 
             <div className="mt-10 grid gap-4 text-[#f5eadb] sm:grid-cols-3">
               <div>
-                <div className="text-sm text-[#a99585]">Working group size</div>
-                <div className="font-serif text-3xl font-semibold">
-                  4 comics max
-                </div>
-              </div>
-              <div>
                 <div className="text-sm text-[#a99585]">Session length</div>
                 <div className="font-serif text-3xl font-semibold">
                   60 minutes
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-[#a99585]">Working groups</div>
+                <div className="font-serif text-3xl font-semibold">
+                  3-4 comics per group
                 </div>
               </div>
               <div>
