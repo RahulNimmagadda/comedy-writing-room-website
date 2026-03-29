@@ -281,12 +281,15 @@ export default async function HomePage() {
         />
       </section>
 
-      <div className="rounded-[2rem] border border-[#d8c3ad] bg-[#fbf5eb]/88 px-6 py-7 shadow-[0_24px_60px_rgba(58,36,23,0.08)] sm:flex sm:items-center sm:justify-between sm:gap-6">
-        <div>
-          <p className="font-serif text-4xl font-semibold text-[#1d140f]">
+      <div className="rounded-[2rem] border border-[#deccb8] bg-[#f9f2e8]/72 px-6 py-6 shadow-[0_16px_36px_rgba(58,36,23,0.05)] sm:flex sm:items-center sm:justify-between sm:gap-6">
+        <div className="max-w-3xl">
+          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8c6a50]">
+            Community Input
+          </div>
+          <p className="mt-2 font-serif text-3xl font-semibold text-[#1d140f] sm:text-[2rem]">
             No time that works for you?
           </p>
-          <p className="mt-2 max-w-3xl text-base leading-relaxed text-[#5e5045]">
+          <p className="mt-2 text-base leading-relaxed text-[#5e5045]">
             Suggest a time, ask about hosting, or send feedback. This is being
             built with the community.
           </p>
@@ -295,7 +298,7 @@ export default async function HomePage() {
           href="https://docs.google.com/forms/d/e/1FAIpQLSddb6YHQoTvV11H_y85w4SYG_UhLCXhhJ9FPVF27zTkYJCDbQ/viewform?usp=header"
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-5 inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#f0bb6b,#d4582d)] px-6 py-3 text-sm font-semibold text-[#fff6ea] shadow-[0_16px_40px_rgba(196,94,50,0.28)] transition hover:brightness-105 sm:mt-0"
+          className="mt-5 inline-flex items-center justify-center rounded-full border border-[#bea58e] bg-[#fff9f1]/78 px-5 py-3 text-sm font-semibold text-[#3b271c] transition hover:bg-[#fffdf8] sm:mt-0"
         >
           Suggest a Time
         </a>

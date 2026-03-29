@@ -73,7 +73,7 @@ export default function FeaturedSessionCard({
             </div>
           </div>
 
-          <div className="text-3xl font-bold text-[#c1522b]">
+          <div className="font-serif text-3xl font-semibold text-[#3b271c]">
             {formatUsd(session.price_cents)}
           </div>
         </div>
