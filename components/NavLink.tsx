@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function NavLink({
   href,
@@ -11,15 +12,27 @@ export default function NavLink({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [currentHash, setCurrentHash] = useState("");
   const pathOnly = href.split("#")[0] || "/";
+  const targetHash = href.includes("#") ? `#${href.split("#")[1]}` : "";
 
   // Treat "/sessions" as "Home" since it redirects to "/"
   const normalized = pathname === "/sessions" ? "/" : pathname;
 
+  useEffect(() => {
+    const syncHash = () => setCurrentHash(window.location.hash);
+
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, []);
+
   const isActive =
-    pathOnly === "/"
-      ? normalized === "/"
-      : normalized === pathOnly || normalized.startsWith(pathOnly + "/");
+    targetHash.length > 0
+      ? normalized === pathOnly && currentHash === targetHash
+      : pathOnly === "/"
+        ? normalized === "/" && currentHash === ""
+        : normalized === pathOnly || normalized.startsWith(pathOnly + "/");
 
   return (
     <Link

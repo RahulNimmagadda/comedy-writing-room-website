@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Item = { href: string; label: string };
 
 export default function MobileNav({ items }: { items: Item[] }) {
   const pathname = usePathname();
   const detailsRef = useRef<HTMLDetailsElement>(null);
+  const [currentHash, setCurrentHash] = useState("");
 
   // Treat "/sessions" as "Home" since it redirects to "/"
   const normalized = pathname === "/sessions" ? "/" : pathname;
@@ -17,6 +18,14 @@ export default function MobileNav({ items }: { items: Item[] }) {
   useEffect(() => {
     if (detailsRef.current) detailsRef.current.open = false;
   }, [pathname]);
+
+  useEffect(() => {
+    const syncHash = () => setCurrentHash(window.location.hash);
+
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, []);
 
   return (
     <details ref={detailsRef} className="relative z-50 md:hidden">
@@ -28,11 +37,16 @@ export default function MobileNav({ items }: { items: Item[] }) {
         <div className="flex flex-col p-2 text-sm">
           {items.map((item) => {
             const pathOnly = item.href.split("#")[0] || "/";
+            const targetHash = item.href.includes("#")
+              ? `#${item.href.split("#")[1]}`
+              : "";
             const isActive =
-              pathOnly === "/"
-                ? normalized === "/"
-                : normalized === pathOnly ||
-                  normalized.startsWith(pathOnly + "/");
+              targetHash.length > 0
+                ? normalized === pathOnly && currentHash === targetHash
+                : pathOnly === "/"
+                  ? normalized === "/" && currentHash === ""
+                  : normalized === pathOnly ||
+                    normalized.startsWith(pathOnly + "/");
 
             return (
               <Link
