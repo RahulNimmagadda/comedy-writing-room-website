@@ -27,6 +27,7 @@ type BookingRow = {
   session_id: string;
   user_email: string | null;
   timezone: string | null;
+  created_at: string;
   reminder_24h_at: string | null;
   reminder_24h_sent: boolean;
   reminder_1h_at: string | null;
@@ -44,6 +45,56 @@ type DueItem = {
   label: "24h" | "1h";
 };
 
+function hasValidTimezone(timezone: string | null | undefined) {
+  if (!timezone || typeof timezone !== "string") return false;
+
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function reminderColumn(label: "24h" | "1h") {
+  return label === "24h" ? "reminder_24h_sent" : "reminder_1h_sent";
+}
+
+async function markReminderSent(bookingId: string, label: "24h" | "1h") {
+  const { error } = await supabaseAdmin
+    .from("bookings")
+    .update({ [reminderColumn(label)]: true })
+    .eq("id", bookingId);
+
+  if (error) throw new Error(error.message);
+}
+
+function choosePreferredReminder(items: DueItem[]) {
+  return items.reduce((best, current) => {
+    if (best.label === "24h" && current.label === "1h") return current;
+    if (best.label === "1h" && current.label === "24h") return best;
+
+    const bestHasTimezone = hasValidTimezone(best.booking.timezone);
+    const currentHasTimezone = hasValidTimezone(current.booking.timezone);
+
+    if (!bestHasTimezone && currentHasTimezone) return current;
+    if (bestHasTimezone && !currentHasTimezone) return best;
+
+    const bestCreatedAt = Date.parse(best.booking.created_at);
+    const currentCreatedAt = Date.parse(current.booking.created_at);
+
+    if (
+      Number.isFinite(bestCreatedAt) &&
+      Number.isFinite(currentCreatedAt) &&
+      currentCreatedAt > bestCreatedAt
+    ) {
+      return current;
+    }
+
+    return best;
+  });
+}
+
 async function handler(req: Request) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -55,7 +106,7 @@ async function handler(req: Request) {
   const due: DueItem[] = [];
 
   const selectCols =
-    "id,session_id,user_email,timezone,reminder_24h_at,reminder_24h_sent,reminder_1h_at,reminder_1h_sent";
+    "id,session_id,user_email,timezone,created_at,reminder_24h_at,reminder_24h_sent,reminder_1h_at,reminder_1h_sent";
 
   const { data: due24h, error: e24 } = await supabaseAdmin
     .from("bookings")
@@ -96,23 +147,27 @@ async function handler(req: Request) {
     });
   }
 
-  // Dedupe by booking: if both due, send 1h only
-  const byBookingId = new Map<string, DueItem>();
+  const grouped = new Map<string, DueItem[]>();
   for (const item of due) {
-    const existing = byBookingId.get(item.booking.id);
-    if (!existing) {
-      byBookingId.set(item.booking.id, item);
-      continue;
-    }
-    if (existing.label === "24h" && item.label === "1h") {
-      byBookingId.set(item.booking.id, item);
+    const emailKey = (item.booking.user_email ?? "").trim().toLowerCase();
+    const key = `${item.booking.session_id}::${emailKey}`;
+    const existing = grouped.get(key);
+
+    if (existing) {
+      existing.push(item);
+    } else {
+      grouped.set(key, [item]);
     }
   }
 
-  const deduped = Array.from(byBookingId.values());
+  const deduped = Array.from(grouped.entries()).map(([key, items]) => ({
+    key,
+    primary: choosePreferredReminder(items),
+    items,
+  }));
 
   const sessionIds = Array.from(
-    new Set(deduped.map((x) => x.booking.session_id))
+    new Set(deduped.map((x) => x.primary.booking.session_id))
   );
 
   const { data: sessions, error: sErr } = await supabaseAdmin
@@ -130,7 +185,8 @@ async function handler(req: Request) {
   let invalidEmail = 0;
   const failures: Array<{ bookingId: string; reason: string }> = [];
 
-  for (const item of deduped) {
+  for (const group of deduped) {
+    const item = group.primary;
     const b = item.booking;
     const s = sessionById.get(b.session_id);
     if (!s) continue;
@@ -140,20 +196,10 @@ async function handler(req: Request) {
 
     // Never send if session already started; mark as sent so it won't retry
     if (startsAtMs <= nowMs) {
-      skippedLate += 1;
+      skippedLate += group.items.length;
       try {
-        if (item.label === "24h") {
-          const { error: upErr } = await supabaseAdmin
-            .from("bookings")
-            .update({ reminder_24h_sent: true })
-            .eq("id", b.id);
-          if (upErr) throw new Error(upErr.message);
-        } else {
-          const { error: upErr } = await supabaseAdmin
-            .from("bookings")
-            .update({ reminder_1h_sent: true })
-            .eq("id", b.id);
-          if (upErr) throw new Error(upErr.message);
+        for (const groupedItem of group.items) {
+          await markReminderSent(groupedItem.booking.id, groupedItem.label);
         }
       } catch (err: unknown) {
         failures.push({
@@ -193,18 +239,8 @@ async function handler(req: Request) {
         }),
       });
 
-      if (item.label === "24h") {
-        const { error: upErr } = await supabaseAdmin
-          .from("bookings")
-          .update({ reminder_24h_sent: true })
-          .eq("id", b.id);
-        if (upErr) throw new Error(upErr.message);
-      } else {
-        const { error: upErr } = await supabaseAdmin
-          .from("bookings")
-          .update({ reminder_1h_sent: true })
-          .eq("id", b.id);
-        if (upErr) throw new Error(upErr.message);
+      for (const groupedItem of group.items) {
+        await markReminderSent(groupedItem.booking.id, groupedItem.label);
       }
 
       sentCount += 1;
