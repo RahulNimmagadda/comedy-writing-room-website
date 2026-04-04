@@ -160,7 +160,8 @@ export default async function HomePage() {
                   3-4 comics per breakout
                 </div>
                 <div className="mt-1 max-w-[16rem] text-sm leading-relaxed text-[#a99585]">
-                  More signups do not close the room. They open another group.
+                  Even if 100 comics sign up for a session, you&apos;ll be put
+                  into small groups of 3-4.
                 </div>
               </div>
               <div>
