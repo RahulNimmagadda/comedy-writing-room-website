@@ -155,9 +155,12 @@ export default async function HomePage() {
                 </div>
               </div>
               <div>
-                <div className="text-sm text-[#a99585]">Working groups</div>
+                <div className="text-sm text-[#a99585]">Room format</div>
                 <div className="font-serif text-3xl font-semibold">
-                  3-4 comics per group
+                  3-4 comics per breakout
+                </div>
+                <div className="mt-1 max-w-[16rem] text-sm leading-relaxed text-[#a99585]">
+                  More signups do not close the room. They open another group.
                 </div>
               </div>
               <div>
@@ -221,7 +224,7 @@ export default async function HomePage() {
             {
               step: "02",
               title: "Run your bits",
-              body: "Each person gets 12-15 minutes to share material and get feedback, steers, and tags from other comics in the room.",
+              body: "Each person gets 12-15 minutes to share material and get feedback, steers, and tags. Rooms stay at 3-4 comics, and bigger signups split into breakout groups.",
             },
             {
               step: "03",

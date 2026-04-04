@@ -262,6 +262,10 @@ export default function SessionsBrowser({
         filteredSessions.map((s) => {
           const type = sessionType(s.price_cents);
           const signupCount = seatsBySession[s.id] ?? 0;
+          const signupLabel =
+            signupCount === 1
+              ? "1 comic signed up"
+              : `${signupCount} comics signed up`;
           const isFree = (s.price_cents ?? 0) <= 0;
           const isJoined = joinedSet.has(s.id);
 
@@ -301,12 +305,13 @@ export default function SessionsBrowser({
                   </div>
 
                   <div className="text-base text-[#4f4137]">
-                    <span className="font-semibold">{signupCount}</span> comics
-                    signed up
+                    <span className="font-semibold">
+                      {signupLabel} - more spots available!
+                    </span>
                   </div>
 
                   <div className="text-sm text-[#7d6a5d]">
-                    Breakout rooms are created manually as needed.
+                    Session is split into working groups of 3-4.
                   </div>
 
                   {isJoined && (
