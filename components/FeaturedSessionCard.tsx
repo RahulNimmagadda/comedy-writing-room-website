@@ -34,12 +34,14 @@ export default function FeaturedSessionCard({
   userId,
   isJoined,
   isAdmin,
+  label = "Next Session",
 }: {
   session: SessionRow;
   signupCount: number;
   userId?: string | null;
   isJoined?: boolean;
   isAdmin?: boolean;
+  label?: string;
 }) {
   const type = sessionType(session.price_cents);
   const durationMinutes = displayDurationMinutes(session.duration_minutes);
@@ -49,7 +51,7 @@ export default function FeaturedSessionCard({
   return (
     <section className="overflow-hidden rounded-[2rem] border border-[#d8c3ad] bg-[linear-gradient(145deg,#f9f1e7,#eadcca)] p-6 text-[#211610] shadow-[0_26px_70px_rgba(58,36,23,0.18)] sm:p-8">
       <div className="text-xs font-semibold uppercase tracking-[0.28em] text-[#8c6a50]">
-        Next Session
+        {label}
       </div>
       <h2 className="mt-3 font-serif text-4xl font-semibold leading-none text-[#211610] sm:text-5xl">
         {session.title}

@@ -98,13 +98,19 @@ export default async function HomePage() {
     joinedSessionIds.push(...Array.from(joinedSet));
   }
 
-  const featuredSession = typedSessions[0] ?? null;
+  const featuredSession =
+    typedSessions.find((session) => joinedSessionIds.includes(session.id)) ??
+    typedSessions[0] ??
+    null;
   const featuredSignupCount = featuredSession
     ? seatsBySession[featuredSession.id] ?? 0
     : 0;
   const featuredJoined = featuredSession
     ? joinedSessionIds.includes(featuredSession.id)
     : false;
+  const featuredLabel = featuredJoined
+    ? "Your Upcoming Session"
+    : "Next Session";
 
   return (
     <div className="space-y-12 pb-8 sm:space-y-16">
@@ -182,6 +188,7 @@ export default async function HomePage() {
                 userId={userId ?? null}
                 isJoined={featuredJoined}
                 isAdmin={isAdmin}
+                label={featuredLabel}
               />
             ) : (
               <div className="rounded-[2rem] border border-[#5b4031] bg-[#f7efe4]/10 p-8 shadow-[0_26px_70px_rgba(26,18,13,0.18)]">

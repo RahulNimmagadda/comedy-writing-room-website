@@ -103,14 +103,18 @@ export default async function RootLayout({
 
                 <div className="flex items-center gap-3">
                   <Link
-                    href="/sign-in"
+                    href={userId ? "/account" : "/sign-in"}
                     className="hidden rounded-full bg-[#1f1510] px-5 py-2.5 text-sm font-semibold text-[#fff6ea] transition hover:bg-[#31231b] md:inline-flex"
                   >
-                    Join
+                    {userId ? "Account" : "Sign in"}
                   </Link>
                   <MobileNav
                     items={[
                       ...NAV_ITEMS,
+                      {
+                        href: userId ? "/account" : "/sign-in",
+                        label: userId ? "Account" : "Sign in",
+                      },
                       ...(isAdmin
                         ? [{ href: "/admin/sessions", label: "Admin" }]
                         : []),
