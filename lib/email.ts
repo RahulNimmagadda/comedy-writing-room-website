@@ -58,35 +58,37 @@ export async function sendEmail({ to, subject, html, text }: SendEmailArgs) {
 /**
  * Format an ISO timestamp for a specific user timezone.
  * - timezone should be an IANA zone like "America/Mexico_City"
- * - if timezone is missing/invalid, we safely fall back to UTC
+ * - if timezone is missing/invalid, we safely fall back to NYC time
  */
-export function formatInTimezone(iso: string, timezone?: string | null) {
-  const d = new Date(iso);
-  const tz =
-    timezone && typeof timezone === "string" && timezone.length > 0
-      ? timezone
-      : "UTC";
+export const DEFAULT_EMAIL_TIMEZONE = "America/New_York";
+
+export function normalizeTimezone(timezone?: string | null) {
+  if (!timezone || typeof timezone !== "string") return null;
+
+  const trimmed = timezone.trim();
+  if (!trimmed) return null;
 
   try {
-    return new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(d);
+    new Intl.DateTimeFormat("en-US", { timeZone: trimmed });
+    return trimmed;
   } catch {
-    // If timezone is invalid, fall back to UTC
-    return new Intl.DateTimeFormat("en-US", {
-      timeZone: "UTC",
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(d);
+    return null;
   }
+}
+
+export function formatInTimezone(iso: string, timezone?: string | null) {
+  const d = new Date(iso);
+  const tz = normalizeTimezone(timezone) ?? DEFAULT_EMAIL_TIMEZONE;
+
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(d);
 }
 
 // Backward-compatible helper (kept because other code may import it)

@@ -3,7 +3,7 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { confirmationEmailHtml, sendEmail } from "@/lib/email";
+import { confirmationEmailHtml, normalizeTimezone, sendEmail } from "@/lib/email";
 
 function isAdminUser(userId: string | null) {
   if (!userId) return false;
@@ -72,7 +72,9 @@ export async function joinSession(
     if (!sessionId) return { ok: false, error: "Missing sessionId" };
 
     // Client-supplied IANA timezone, e.g. "America/Mexico_City"
-    const timezone = String(formData.get("timezone") || "").trim() || null;
+    const timezone = normalizeTimezone(
+      String(formData.get("timezone") || "").trim() || null
+    );
 
     const { data: sessionRow, error: sErr } = await supabaseAdmin
       .from("sessions")

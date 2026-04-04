@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useSyncExternalStore } from "react";
 import PayButton from "@/components/PayButton";
+import TimezoneField from "@/components/TimezoneField";
 import { joinSession, type JoinSessionResult } from "@/app/sessions/actions";
 
 function getSessionTiming(startsAtIso: string, durationMinutes: number) {
@@ -144,6 +145,7 @@ export default function SessionActionButton({
       ) : canReserveDirectly ? (
         <form action={formAction}>
           <input type="hidden" name="sessionId" value={sessionId} />
+          <TimezoneField />
           <button
             className={`${baseButtonClasses} ${variantStyles.primary}`}
             type="submit"

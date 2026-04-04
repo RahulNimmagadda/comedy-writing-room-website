@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { stripe } from "@/lib/stripe";
+import { normalizeTimezone } from "@/lib/email";
 
 type Body = { sessionId?: string; timezone?: string };
 
@@ -33,7 +34,8 @@ export async function POST(req: Request) {
     const body = (await req.json()) as Body;
 
     const sessionId = String(body.sessionId ?? "").trim();
-    const timezone = String(body.timezone ?? "").trim(); // 🔥 NEW
+    const rawTimezone = String(body.timezone ?? "").trim();
+    const timezone = normalizeTimezone(rawTimezone);
 
     if (!sessionId) {
       return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
@@ -51,6 +53,16 @@ export async function POST(req: Request) {
 
     if (!sessionRow) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+
+    if (!timezone) {
+      console.warn("Stripe checkout missing or invalid timezone", {
+        userId,
+        sessionId,
+        rawTimezone: rawTimezone || null,
+        hasOrigin: Boolean(req.headers.get("origin")),
+        userAgent: req.headers.get("user-agent") ?? null,
+      });
     }
 
     const startsAtMs = new Date(sessionRow.starts_at).getTime();
@@ -95,7 +107,7 @@ export async function POST(req: Request) {
       metadata: {
         clerk_user_id: userId,
         writing_session_id: sessionId,
-        timezone: timezone || "", // 🔥 KEY FIX
+        timezone: timezone || "",
       },
 
       line_items: [
@@ -112,6 +124,14 @@ export async function POST(req: Request) {
       ],
       success_url: successUrl,
       cancel_url: cancelUrl,
+    });
+
+    console.info("Stripe checkout created", {
+      userId,
+      sessionId,
+      checkoutSessionId: checkout.id,
+      timezone: timezone ?? null,
+      rawTimezone: rawTimezone || null,
     });
 
     return NextResponse.json({ url: checkout.url });

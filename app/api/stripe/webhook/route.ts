@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { clerkClient } from "@clerk/nextjs/server";
-import { confirmationEmailHtml, sendEmail } from "@/lib/email";
+import { confirmationEmailHtml, normalizeTimezone, sendEmail } from "@/lib/email";
 
 function getErrorMessage(err: unknown) {
   if (err instanceof Error) return err.message;
@@ -115,7 +115,7 @@ async function enrichBookingAndSendConfirmation(args: {
 
   const { data: bookingRow, error: bErr } = await supabaseAdmin
     .from("bookings")
-    .select("id,confirmation_sent")
+    .select("id,confirmation_sent,timezone")
     .eq("session_id", args.writingSessionId)
     .eq("user_id", args.clerkUserId)
     .order("created_at", { ascending: false })
@@ -131,11 +131,32 @@ async function enrichBookingAndSendConfirmation(args: {
     return { enriched: false };
   }
 
+  const bookingTimezone =
+    normalizeTimezone(args.timezone) ?? normalizeTimezone(bookingRow.timezone);
+
+  if (!bookingTimezone) {
+    console.warn("Stripe webhook has no usable timezone for confirmation", {
+      clerkUserId: args.clerkUserId,
+      writingSessionId: args.writingSessionId,
+      incomingTimezone: args.timezone ?? null,
+      storedBookingTimezone: bookingRow.timezone ?? null,
+      bookingId: bookingRow.id,
+    });
+  } else if (!normalizeTimezone(args.timezone) && normalizeTimezone(bookingRow.timezone)) {
+    console.info("Stripe webhook recovered timezone from booking", {
+      clerkUserId: args.clerkUserId,
+      writingSessionId: args.writingSessionId,
+      bookingId: bookingRow.id,
+      recoveredTimezone: bookingTimezone,
+      incomingTimezone: args.timezone ?? null,
+    });
+  }
+
   await supabaseAdmin
     .from("bookings")
     .update({
       ...(email ? { user_email: email } : {}),
-      ...(args.timezone ? { timezone: args.timezone } : {}),
+      ...(bookingTimezone ? { timezone: bookingTimezone } : {}),
       reminder_24h_at: minusHours(sessionRow.starts_at, 24),
       reminder_1h_at: minusHours(sessionRow.starts_at, 1),
     })
@@ -149,7 +170,7 @@ async function enrichBookingAndSendConfirmation(args: {
         html: confirmationEmailHtml({
           sessionTitle: sessionRow.title,
           startsAtIso: sessionRow.starts_at,
-          timezone: args.timezone ?? null,
+          timezone: bookingTimezone,
         }),
       });
 
@@ -243,6 +264,7 @@ export async function POST(req: Request) {
   const clerkUserId = session.metadata?.clerk_user_id;
   const writingSessionId = session.metadata?.writing_session_id;
   const timezone = session.metadata?.timezone || null;
+  const normalizedTimezone = normalizeTimezone(timezone);
 
   if (!clerkUserId || !writingSessionId) {
     return NextResponse.json({
@@ -255,6 +277,16 @@ export async function POST(req: Request) {
 
   const paymentIntentId =
     typeof session.payment_intent === "string" ? session.payment_intent : null;
+
+  if (!normalizedTimezone) {
+    console.warn("Stripe webhook missing or invalid timezone metadata", {
+      eventId: event.id,
+      clerkUserId,
+      writingSessionId,
+      checkoutSessionId: session.id,
+      metadataTimezone: timezone,
+    });
+  }
 
   const { data: timeRow, error: timeErr } = await supabaseAdmin
     .from("sessions")
@@ -315,7 +347,7 @@ export async function POST(req: Request) {
       clerkUserId,
       writingSessionId,
       fallbackEmail: stripeEmail,
-      timezone,
+      timezone: normalizedTimezone,
     });
 
     revalidatePath("/");
@@ -330,7 +362,7 @@ export async function POST(req: Request) {
       clerkUserId,
       writingSessionId,
       fallbackEmail: stripeEmail,
-      timezone,
+      timezone: normalizedTimezone,
     });
 
     revalidatePath("/");
