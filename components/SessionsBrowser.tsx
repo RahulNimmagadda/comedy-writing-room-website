@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import LocalTime from "@/components/LocalTime";
 import SessionActionButton from "@/components/SessionActionButton";
+import SessionTimingNotice from "@/components/SessionTimingNotice";
 
 type SessionRow = {
   id: string;
@@ -123,8 +124,8 @@ export default function SessionsBrowser({
                 Browse sessions
               </div>
               <div className="mt-2 max-w-2xl text-sm text-[#5d4e43]">
-                Filter by title, type, or date. Past sessions stay hidden, and
-                all reserve, pay, and join behavior remains unchanged.
+                Filter by title, type, or date. Ended sessions stay hidden.
+                Join opens 5 minutes before start and locks 5 minutes after.
               </div>
             </div>
 
@@ -250,7 +251,7 @@ export default function SessionsBrowser({
           <div className="text-base font-medium text-[#1f1510]">
             {dateFilter.length > 0
               ? "No sessions on this date."
-              : "No upcoming sessions match those filters."}
+              : "No live or upcoming sessions match those filters."}
           </div>
           <div className="mt-1 text-sm text-[#5d4e43]">
             {dateFilter.length > 0
@@ -314,11 +315,11 @@ export default function SessionsBrowser({
                     Session is split into working groups of 3-4.
                   </div>
 
-                  {isJoined && (
-                    <div className="text-sm text-[#7d6a5d]">
-                      Join Room becomes available 5 minutes before start.
-                    </div>
-                  )}
+                  <SessionTimingNotice
+                    startsAt={s.starts_at}
+                    durationMinutes={s.duration_minutes}
+                    isJoined={isJoined}
+                  />
                 </div>
 
                 <div className="shrink-0">

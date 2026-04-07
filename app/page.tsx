@@ -6,6 +6,7 @@ import Link from "next/link";
 import FeaturedSessionCard from "@/components/FeaturedSessionCard";
 import SessionsBrowser from "@/components/SessionsBrowser";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getSessionTiming } from "@/lib/sessionTiming";
 
 type SessionRow = {
   id: string;
@@ -31,7 +32,6 @@ export default async function HomePage() {
     .from("sessions")
     .select("id,title,starts_at,duration_minutes,seat_cap,status,price_cents")
     .eq("status", "scheduled")
-    .gte("starts_at", new Date().toISOString())
     .order("starts_at", { ascending: true });
 
   if (sessionsError) {
@@ -55,7 +55,14 @@ export default async function HomePage() {
     );
   }
 
-  const typedSessions = (sessions ?? []) as SessionRow[];
+  const nowMs = Number(new Date());
+  const typedSessions = ((sessions ?? []) as SessionRow[]).filter((session) => {
+    const { endMs } = getSessionTiming(
+      session.starts_at,
+      session.duration_minutes
+    );
+    return endMs > nowMs;
+  });
   const sessionIds = typedSessions.map((s) => s.id);
 
   const seatsBySession: Record<string, number> = {};
@@ -276,11 +283,16 @@ export default async function HomePage() {
       <section id="sessions" className="space-y-5 scroll-mt-28">
         <div>
           <div className="text-sm font-semibold uppercase tracking-[0.24em] text-[#8c6a50]">
-            Upcoming Sessions
+            Live & Upcoming Sessions
           </div>
           <h2 className="mt-3 font-serif text-5xl font-semibold tracking-tight text-[#1d140f] sm:text-6xl">
-            Find a room that fits your schedule.
+            Book ahead and arrive on time.
           </h2>
+          <p className="mt-3 max-w-3xl text-lg text-[#5e5045]">
+            Join opens 5 minutes before the session starts and closes 5
+            minutes after, so the room can get moving without late
+            interruptions.
+          </p>
         </div>
 
         <SessionsBrowser

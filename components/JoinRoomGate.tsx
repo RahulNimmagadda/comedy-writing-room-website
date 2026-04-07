@@ -2,18 +2,7 @@
 
 import Link from "next/link";
 import { ReactNode, useSyncExternalStore } from "react";
-
-function getSessionTiming(startsAtIso: string, durationMinutes: number) {
-  const start = new Date(startsAtIso).getTime();
-  const end = start + durationMinutes * 60_000;
-
-  return {
-    start,
-    end,
-    joinOpensAt: start - 5 * 60_000,
-    reserveClosesAt: start + 5 * 60_000,
-  };
-}
+import { getSessionTiming } from "@/lib/sessionTiming";
 
 function subscribeNow(callback: () => void) {
   const interval = setInterval(callback, 15_000);
@@ -57,17 +46,19 @@ export default function JoinRoomGate({
     );
   }
 
-  const { joinOpensAt, reserveClosesAt, end } = getSessionTiming(
+  const { joinOpensAtMs, joinClosesAtMs, endMs } = getSessionTiming(
     startsAt,
     durationMinutes
   );
 
-  if (now < joinOpensAt) {
+  if (now < joinOpensAtMs) {
     return (
       <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
         <h1 className="text-2xl font-bold">Room not open yet</h1>
         <p className="opacity-70">
-          Join Room becomes available 5 minutes before the session starts.
+          Join Room becomes available 5 minutes before the session starts. Late
+          entry closes 5 minutes after start so the room can begin without
+          interruptions.
         </p>
         <Link className="underline" href="/">
           Back to sessions
@@ -76,12 +67,13 @@ export default function JoinRoomGate({
     );
   }
 
-  if (now > reserveClosesAt && now <= end) {
+  if (now > joinClosesAtMs && now <= endMs) {
     return (
       <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
-        <h1 className="text-2xl font-bold">Session in progress</h1>
+        <h1 className="text-2xl font-bold">Late entry is closed</h1>
         <p className="opacity-70">
-          Joining is only available through 5 minutes after the session starts.
+          This session is already in progress. Joining is only available
+          through 5 minutes after the session starts so the room stays focused.
         </p>
         <Link className="underline" href="/">
           Back to sessions
@@ -90,7 +82,7 @@ export default function JoinRoomGate({
     );
   }
 
-  if (now > end) {
+  if (now > endMs) {
     return (
       <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-3">
         <h1 className="text-2xl font-bold">Session Ended</h1>

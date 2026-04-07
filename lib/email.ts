@@ -105,28 +105,37 @@ export function confirmationEmailHtml(args: {
   const url = siteUrl();
 
   return `
-  <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height: 1.5;">
-    <h2 style="margin:0 0 12px 0;">You’re in ✅</h2>
-    <p style="margin:0 0 12px 0;">
+  <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height: 1.5; color:#1f1510;">
+    <div style="max-width:560px; border:1px solid #e7d5c1; border-radius:24px; background:#fffaf3; padding:28px;">
+    <div style="margin:0 0 8px 0; font-size:12px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:#9a6e4f;">Booking confirmed</div>
+    <h2 style="margin:0 0 12px 0; font-size:30px; line-height:1.1;">You’re in</h2>
+    <p style="margin:0 0 12px 0; color:#5d4e43;">
       You’re signed up for <strong>${escapeHtml(args.sessionTitle)}</strong>.
     </p>
     <p style="margin:0 0 16px 0;">
       <strong>When:</strong> ${escapeHtml(whenLocal)}
     </p>
-    <p style="margin:0 0 16px 0;">
-      This session takes place on Zoom. You’ll join through the Comedy Writing Room site when the join button opens 5 minutes before start.
-    </p>
-    <p style="margin:0 0 16px 0;">
-      Join from the site when the button opens:
+    <div style="margin:0 0 18px 0; border:1px solid #ead9c5; border-radius:18px; background:#ffffff; padding:16px;">
+      <div style="font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:#9a6e4f;">Arrival policy</div>
+      <p style="margin:8px 0 0 0; font-size:15px; font-weight:700; color:#2d1d14;">
+        Join opens 5 minutes before start and locks 5 minutes after start.
+      </p>
+      <p style="margin:8px 0 0 0; color:#5d4e43;">
+        This session takes place on Zoom, but you’ll enter through the Comedy Writing Room site. We close late entry after 5 minutes so the room can start cleanly without interruptions.
+      </p>
+    </div>
+    <p style="margin:0 0 16px 0; color:#5d4e43;">
+      Open the site when the join button appears:
     </p>
     <p style="margin:0 0 20px 0;">
       <a href="${url}" style="display:inline-block; padding:10px 14px; border-radius:10px; background:#111827; color:#fff; text-decoration:none;">
         Open Comedy Writing Room
       </a>
     </p>
-    <p style="margin:0; color:#6b7280; font-size:12px;">
-      Tip: join opens 5 minutes before start.
+    <p style="margin:0; color:#7d6a5d; font-size:12px;">
+      Please plan to be there on time so you don’t get locked out once the room gets going.
     </p>
+    </div>
   </div>
   `;
 }
@@ -146,25 +155,34 @@ export function reminderEmailHtml(args: {
       : "Reminder ⏰ Starting soon";
 
   return `
-  <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height: 1.5;">
-    <h2 style="margin:0 0 12px 0;">${headline}</h2>
-    <p style="margin:0 0 12px 0;">
+  <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height: 1.5; color:#1f1510;">
+    <div style="max-width:560px; border:1px solid #e7d5c1; border-radius:24px; background:#fffaf3; padding:28px;">
+    <div style="margin:0 0 8px 0; font-size:12px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:#9a6e4f;">Session reminder</div>
+    <h2 style="margin:0 0 12px 0; font-size:30px; line-height:1.1;">${headline}</h2>
+    <p style="margin:0 0 12px 0; color:#5d4e43;">
       <strong>${escapeHtml(args.sessionTitle)}</strong>
     </p>
     <p style="margin:0 0 16px 0;">
       <strong>When:</strong> ${escapeHtml(whenLocal)}
     </p>
-    <p style="margin:0 0 16px 0;">
-      Reminder: this session takes place on Zoom. You’ll join through the Comedy Writing Room site when the join button opens 5 minutes before start.
-    </p>
+    <div style="margin:0 0 18px 0; border:1px solid #ead9c5; border-radius:18px; background:#ffffff; padding:16px;">
+      <div style="font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:#9a6e4f;">Arrival policy</div>
+      <p style="margin:8px 0 0 0; font-size:15px; font-weight:700; color:#2d1d14;">
+        Join opens 5 minutes before start and locks 5 minutes after start.
+      </p>
+      <p style="margin:8px 0 0 0; color:#5d4e43;">
+        You’ll join through the Comedy Writing Room site, then head into Zoom. Late entry closes after the first 5 minutes so the room can stay focused.
+      </p>
+    </div>
     <p style="margin:0 0 20px 0;">
       <a href="${url}" style="display:inline-block; padding:10px 14px; border-radius:10px; background:#111827; color:#fff; text-decoration:none;">
         Open Comedy Writing Room
       </a>
     </p>
-    <p style="margin:0; color:#6b7280; font-size:12px;">
-      Tip: join opens 5 minutes before start.
+    <p style="margin:0; color:#7d6a5d; font-size:12px;">
+      A couple minutes early is perfect. Once the room is 5 minutes in, the doors close.
     </p>
+    </div>
   </div>
   `;
 }

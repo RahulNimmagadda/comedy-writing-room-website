@@ -2,6 +2,7 @@
 
 import SessionActionButton from "@/components/SessionActionButton";
 import LocalTime from "@/components/LocalTime";
+import SessionTimingNotice from "@/components/SessionTimingNotice";
 
 function formatUsd(cents: number) {
   const safe = Number.isFinite(cents) ? cents : 0;
@@ -98,6 +99,14 @@ export default function FeaturedSessionCard({
         <div className="mt-3 text-sm leading-relaxed text-[#5d4e43]">
           Bring unfinished ideas and get feedback, steers, and tags from the
           room.
+        </div>
+        <div className="mt-3">
+          <SessionTimingNotice
+            startsAt={session.starts_at}
+            durationMinutes={durationMinutes}
+            isJoined={isJoined}
+            tone="hero"
+          />
         </div>
       </div>
 

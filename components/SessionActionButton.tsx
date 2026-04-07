@@ -5,17 +5,7 @@ import { useActionState, useSyncExternalStore } from "react";
 import PayButton from "@/components/PayButton";
 import TimezoneField from "@/components/TimezoneField";
 import { joinSession, type JoinSessionResult } from "@/app/sessions/actions";
-
-function getSessionTiming(startsAtIso: string, durationMinutes: number) {
-  const startMs = new Date(startsAtIso).getTime();
-  const endMs = startMs + durationMinutes * 60_000;
-
-  return {
-    endMs,
-    joinOpensAtMs: startMs - 5 * 60_000,
-    reserveClosesAtMs: startMs + 5 * 60_000,
-  };
-}
+import { getSessionTiming } from "@/lib/sessionTiming";
 
 function subscribeNow(callback: () => void) {
   const interval = setInterval(callback, 15_000);
@@ -86,31 +76,32 @@ export default function SessionActionButton({
     getServerNowSnapshot
   );
 
-  const { endMs, joinOpensAtMs, reserveClosesAtMs } = getSessionTiming(
+  const { endMs, joinOpensAtMs, joinClosesAtMs } = getSessionTiming(
     startsAt,
     durationMinutes
   );
   const hasLiveNow = nowMs > 0;
-  const isInProgress = hasLiveNow && nowMs > reserveClosesAtMs && nowMs <= endMs;
+  const isJoinWindowClosed =
+    hasLiveNow && nowMs > joinClosesAtMs && nowMs <= endMs;
   const canJoinNow =
     hasLiveNow &&
     !!isJoined &&
     nowMs >= joinOpensAtMs &&
-    nowMs <= reserveClosesAtMs;
-  const canReserveNow = !hasLiveNow || nowMs <= reserveClosesAtMs;
+    nowMs <= joinClosesAtMs;
+  const canReserveNow = !hasLiveNow || nowMs <= joinClosesAtMs;
   const isFree = (priceCents ?? 0) <= 0;
   const canReserveDirectly = isFree || !!isAdmin;
   const variantStyles = stylesByVariant[variant];
 
   return (
     <div className="space-y-2">
-      {isInProgress ? (
+      {isJoinWindowClosed ? (
         <button
           type="button"
           disabled
           className={`${baseButtonClasses} ${variantStyles.disabled}`}
         >
-          Session in progress
+          Join window closed
         </button>
       ) : canJoinNow ? (
         <Link
@@ -140,7 +131,7 @@ export default function SessionActionButton({
           disabled
           className={`${baseButtonClasses} ${variantStyles.disabled}`}
         >
-          Session in progress
+          Join window closed
         </button>
       ) : canReserveDirectly ? (
         <form action={formAction}>

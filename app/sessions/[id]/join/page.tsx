@@ -4,18 +4,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import TimezoneField from "@/components/TimezoneField";
 import JoinRoomGate from "@/components/JoinRoomGate";
-
-function getSessionTiming(startsAtIso: string, durationMinutes: number) {
-  const start = new Date(startsAtIso).getTime();
-  const end = start + durationMinutes * 60_000;
-
-  return {
-    start,
-    end,
-    joinOpensAt: start - 5 * 60_000,
-    reserveClosesAt: start + 5 * 60_000,
-  };
-}
+import { getSessionTiming } from "@/lib/sessionTiming";
 
 type SessionRow = {
   id: string;
@@ -129,13 +118,13 @@ export default async function SessionJoinPage({
       redirect(`/sessions/${sessionId}/join`);
     }
 
-    const { joinOpensAt, reserveClosesAt, end } = getSessionTiming(
+    const { joinOpensAtMs, joinClosesAtMs, endMs } = getSessionTiming(
       currentSession.starts_at,
       currentSession.duration_minutes
     );
     const now = Date.now();
 
-    if (now < joinOpensAt || now > reserveClosesAt || now > end) {
+    if (now < joinOpensAtMs || now > joinClosesAtMs || now > endMs) {
       redirect(`/sessions/${sessionId}/join`);
     }
 
@@ -165,7 +154,10 @@ export default async function SessionJoinPage({
     >
       <main className="min-h-screen max-w-2xl mx-auto p-8 space-y-4">
         <h1 className="text-2xl font-bold">{session.title}</h1>
-        <p className="opacity-70">Click below to join the room.</p>
+        <p className="opacity-70">
+          Click below to join the room. Late entry closes 5 minutes after start
+          so the session can stay on track.
+        </p>
 
         <form action={joinNow} className="space-y-3">
           <TimezoneField />
