@@ -7,19 +7,20 @@ import { normalizeTimezone } from "@/lib/email";
 type Body = { sessionId?: string; timezone?: string };
 
 function getBaseUrl(req: Request) {
+  const origin = req.headers.get("origin");
+  if (origin) return origin.replace(/\/$/, "");
+
+  const forwardedHost = req.headers.get("x-forwarded-host");
+  const host = forwardedHost || req.headers.get("host");
+  const proto = req.headers.get("x-forwarded-proto") || "https";
+  if (host) return `${proto}://${host}`.replace(/\/$/, "");
+
   const envUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.APP_URL ||
     process.env.NEXT_PUBLIC_SITE_URL;
 
   if (envUrl) return envUrl.replace(/\/$/, "");
-
-  const origin = req.headers.get("origin");
-  if (origin) return origin.replace(/\/$/, "");
-
-  const host = req.headers.get("host");
-  const proto = req.headers.get("x-forwarded-proto") || "https";
-  if (host) return `${proto}://${host}`.replace(/\/$/, "");
 
   throw new Error("Could not determine base URL for Stripe redirect.");
 }
