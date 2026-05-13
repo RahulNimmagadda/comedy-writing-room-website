@@ -137,7 +137,7 @@ export default async function RootLayout({
                     Comedy Writing Room
                   </div>
                   <p className="mt-2 text-sm leading-relaxed text-[#5d4e43]">
-                    Daily virtual writing rooms for comics who want more reps,
+                    Virtual writing rooms for comics who want more reps,
                     sharper material, and better feedback.
                   </p>
                 </div>
